@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar app color="dark" dark>
+    <v-app-bar dense app color="dark" dark>
       <div class="d-flex align-center">
         <!-- LOGO -->
         <v-img
@@ -17,21 +17,34 @@
 
       <v-spacer></v-spacer>
 
-      <v-btn href="#" target="_blank" text>
-        <span class="mr-2">NAME HOLDER</span>
-        <v-icon>mdi-open-in-new</v-icon>
-      </v-btn>
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
     </v-app-bar>
+    <v-navigation-drawer v-model="drawer" absolute app bottom right persistent>
+      <SidePanel />
+      <!-- <v-list nav dense>
+        <v-list-item-group
+          active-class="deep-purple--text text--accent-4"
+        >
+          <v-list-item>
+            <v-list-item-title>Foo</v-list-item-title>
+          </v-list-item>
 
+          <v-list-item>
+            <v-list-item-title>Bar</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <v-list-item-title>Fizz</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <v-list-item-title>Buzz</v-list-item-title>
+          </v-list-item>
+        </v-list-item-group>
+      </v-list> -->
+    </v-navigation-drawer>
     <v-main>
-      <v-row>
-        <v-col>
-          <Canvas />
-        </v-col>
-        <v-col>
-          <SidePanel />
-        </v-col>
-      </v-row>
+      <Canvas />
     </v-main>
   </v-app>
 </template>
@@ -42,13 +55,19 @@ import SidePanel from "./components/SidePanel";
 
 export default {
   name: "App",
-
   components: {
-    Canvas, SidePanel,
+    Canvas,
+    SidePanel,
   },
 
   data: () => ({
-    //
+    drawer: false,
   }),
 };
 </script>
+
+<style>
+html {
+  overflow-y: auto;
+}
+</style>

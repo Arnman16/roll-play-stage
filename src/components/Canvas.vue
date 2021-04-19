@@ -24,10 +24,52 @@
         </div>
       </v-card>
     </div>
-    <v-btn dense :disabled="!objectSelected" @click="removeToken">remove</v-btn>
-
-    <v-btn dense @click="testMethod">TEST BUTTON</v-btn>
-
+    <v-container class="ma-0 pa-0" fluid>
+      <v-row dense flex>
+        <v-col dense>
+          <v-btn
+            block
+            class="ml-1 mr-1"
+            dense
+            :disabled="!objectSelected"
+            @click="removeToken"
+            >remove</v-btn
+          >
+        </v-col>
+        <!-- <v-col>
+          <v-btn block class="ml-1 mr-1" dense @click="testMethod"
+            >TEST BUTTON</v-btn
+          >
+        </v-col> -->
+        <v-col>
+          <v-btn
+            :depressed="addMarker"
+            block
+            class="ml-1 mr-1"
+            :color="markerColor"
+            dense
+            @click="setMarkerColor"
+            >Add Marker</v-btn
+          >
+        </v-col>
+        <v-col>
+          <v-select
+            v-show="addMarker"
+            block
+            class="ml-1 mr-1"
+            dense
+            :items="colors"
+            v-model="markerColor"
+            outlined
+            width="100"
+            label="Marker Color"
+          ></v-select>
+        </v-col>
+        <v-col>
+          <v-spacer></v-spacer>
+        </v-col>
+      </v-row>
+    </v-container>
     <!-- <div v-for="(token, index) in tokens" :key="token.__id">
       <br />{{ index }}. {{ token.name }}
     </div> -->
@@ -40,6 +82,9 @@ import { fabric } from "fabric";
 export default {
   name: "Canvas",
   data: () => ({
+    colors: ["blue", "red", "yellow", "orange", "green", "purple"],
+    addMarker: false,
+    markerColor: null,
     bgDrag: false,
     tokenRef: {},
     objectSelected: false,
@@ -61,6 +106,44 @@ export default {
     },
   },
   methods: {
+    setMarkerColor() {
+      if (this.addMarker) {
+        this.markerColor = "dark";
+        this.addMarker = false;
+      } else {
+        this.addMarker = true;
+        this.markerColor = "orange";
+      }
+    },
+    createMarker(e) {
+      const pointer = this.canvas.getPointer();
+      console.log(e);
+      var shadow = new fabric.Shadow({
+        color: "black",
+        blur: 50,
+        offsetX: 5,
+        offsetY: 5,
+        opacity: 0.8,
+      });
+
+      const marker = {
+        originX: "center", 
+        originY: "center",
+        top: pointer.y - 12,
+        left: pointer.x,
+        width: 25,
+        angle: 180,
+        height: 25,
+        fill: this.markerColor,
+        stroke: "rgba(0,0,0,0.6)",
+        strokeWidth: 3,
+        shadow: shadow,
+        opacity: 0.8,
+        name: "",
+        notes: "",
+      };
+      this.markerRef.push(marker);
+    },
     testMethod() {
       // var text = new fabric.Textbox("Text", {
       //   width: 100,
@@ -69,7 +152,11 @@ export default {
       //   cursorWidth: 0,
       // });
       // this.canvas.add(text);
-      console.log(this.canvas.getActiveObject());
+      console.log("Objects", this.canvas._objects[0]);
+
+      // console.log("ViewportTransform", this.canvas.viewportTransform);
+
+      // console.log("Zoom", this.canvas.getZoom());
     },
     resetZoom() {
       this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
@@ -83,8 +170,13 @@ export default {
         selectedTokens = selection._objects;
       } else selectedTokens.push(selection);
       selectedTokens.forEach((token) => {
-        const tokenFB = this.tokenRef.child(token.__id);
-        tokenFB.remove();
+        if (token.marker) {
+          const markerFB = this.markerRef.child(token.__id);
+          markerFB.remove();
+        } else {
+          const tokenFB = this.tokenRef.child(token.__id);
+          tokenFB.remove();
+        }
       });
     },
     getTokenFromId(id) {
@@ -157,6 +249,7 @@ export default {
     });
     this.tokenRef = db.database().ref("tokens");
     this.bgRef = db.database().ref("backgrounds");
+    this.markerRef = db.database().ref("markers");
 
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
@@ -183,12 +276,16 @@ export default {
         this.canvas.lastPosY = e.clientY;
       }
     });
-    this.canvas.on("mouse:up", () => {
+    this.canvas.on("mouse:up", (e) => {
       // on mouse up we want to recalculate new interaction
       // for all objects, so we call setViewportTransform
       this.canvas.setViewportTransform(this.canvas.viewportTransform);
       this.canvas.isDragging = false;
       this.canvas.selection = true;
+      if (this.addMarker) {
+        this.createMarker(e);
+        this.setMarkerColor();
+      }
     });
 
     // ---------- SCROLL ZOOM ----------
@@ -213,7 +310,6 @@ export default {
       });
       this.tokens = tokens;
     });
-
     this.bgRef.on("value", (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
@@ -226,11 +322,11 @@ export default {
       this.backgrounds = backgrounds;
       this.bgSelected = this.backgrounds.length - 1;
       fabric.Image.fromURL(this.backgrounds[this.bgSelected].url, (img) => {
-        this.canvas.setBackgroundImage(img);
         img.scaleToHeight(this.canvas.getHeight());
-        this.canvas.renderAll.bind(this.canvas);
-        // img.scaleToWidth(this.canvas.getWidth());
+        this.canvas.setBackgroundImage(img);
       });
+      this.canvas.renderAll.bind(this.canvas);
+      this.canvas.renderAll();
     });
     // this.bgRef.on("child_added", (snapshot) => {
     //   const data = snapshot.val();
@@ -265,10 +361,25 @@ export default {
           shadow: shadow,
           name: data.name,
           race: data.race,
+          marker: false,
           notes: data.notes,
         });
         img.setCoords();
       });
+    });
+    this.markerRef.on("child_added", (snapshot) => {
+      console.log("Marker_ADDED", snapshot.val());
+      const data = snapshot.val();
+      var triangle = new fabric.Triangle(data);
+      triangle.set({
+        __id: snapshot.key,
+        marker: true,
+        name: data.name,
+        notes: data.notes,
+      });
+      this.canvas.add(triangle).setActiveObject(triangle);
+      triangle.setCoords();
+      this.canvas.renderAll();
     });
     this.canvas.on("selection:created", (e) => {
       console.log("object selected");
@@ -276,7 +387,13 @@ export default {
       const selection = this.canvas.getActiveObject();
       if (!selection) return;
       if (selection.type == "activeSelection") return;
-      this.selected = selection.toJSON(["__id", "name", "race", "notes"]);
+      this.selected = selection.toJSON([
+        "__id",
+        "name",
+        "race",
+        "notes",
+        "marker",
+      ]);
       e.target.set({
         scaleX: e.target.scaleX / 1.1,
         scaleY: e.target.scaleX / 1.1,
@@ -294,7 +411,13 @@ export default {
       const selection = this.canvas.getActiveObject();
       if (!selection) return;
       if (selection.type == "activeSelection") return;
-      this.selected = selection.toJSON(["__id", "name", "race", "notes"]);
+      this.selected = selection.toJSON([
+        "__id",
+        "name",
+        "race",
+        "notes",
+        "marker",
+      ]);
     });
     this.canvas.on("object:moving", () => {
       this.changing = true;
@@ -311,7 +434,7 @@ export default {
       if (this.canvas.isDragging) return;
       e.target.set({
         scaleX: e.target.scaleX * 1.1,
-        scaleY: e.target.scaleX * 1.1,
+        scaleY: e.target.scaleY * 1.1,
       });
       this.canvas.renderAll();
     });
@@ -321,7 +444,7 @@ export default {
       if (this.canvas.isDragging) return;
       e.target.set({
         scaleX: e.target.scaleX / 1.1,
-        scaleY: e.target.scaleX / 1.1,
+        scaleY: e.target.scaleY / 1.1,
       });
       this.canvas.renderAll();
     });
@@ -332,28 +455,53 @@ export default {
       var objects = [];
       if (e.target._objects != undefined) {
         const brokenObjects = this.canvas.getActiveObjects();
-        const canvasJSON = this.canvas.toJSON(["__id", "name", "race", "notes"])
-          .objects;
+        const canvasJSON = this.canvas.toJSON([
+          "__id",
+          "name",
+          "race",
+          "notes",
+          "marker",
+        ]).objects;
         brokenObjects.forEach((broke) => {
           canvasJSON.forEach((json) => {
+            if (!broke.src) return;
             if (broke.__id === json.__id) objects.push(json);
           });
         });
       } else objects.push(e.target);
       objects.forEach((object) => {
-        const token = this.tokenRef.child(object.__id);
-        const updates = {
-          top: object.top,
-          left: object.left,
-          scaleX: object.scaleX,
-          scaleY: object.scaleY,
-          angle: object.angle,
-        };
-        token.update(updates);
+        if (object.marker) {
+          const marker = this.markerRef.child(object.__id);
+          const updates = {
+            top: object.top,
+            left: object.left,
+            scaleX: object.scaleX,
+            scaleY: object.scaleY,
+            angle: object.angle,
+          };
+          marker.update(updates);
+        } else {
+          const token = this.tokenRef.child(object.__id);
+          const updates = {
+            top: object.top,
+            left: object.left,
+            scaleX: object.scaleX,
+            scaleY: object.scaleY,
+            angle: object.angle,
+          };
+          token.update(updates);
+        }
       });
       this.changing = false;
     });
     this.tokenRef.on("child_removed", (snapshot) => {
+      console.log("CHILD_REMOVED");
+      const id = snapshot.key;
+      console.log(id);
+      const token = this.getTokenFromId(id);
+      this.canvas.remove(token);
+    });
+    this.markerRef.on("child_removed", (snapshot) => {
       console.log("CHILD_REMOVED");
       const id = snapshot.key;
       console.log(id);
@@ -377,6 +525,29 @@ export default {
             angle: data.angle,
             name: data.name,
             race: data.race,
+            notes: data.notes,
+          });
+          this.canvas._objects[i].setCoords();
+          this.canvas.requestRenderAll();
+        }
+      }
+    });
+    this.markerRef.on("child_changed", (snapshot) => {
+      if (this.changing) return;
+      this.canvas.discardActiveObject();
+      const data = snapshot.val();
+      const id = snapshot.key;
+      for (const i in this.canvas._objects) {
+        if (this.canvas._objects[i].__id === id) {
+          this.canvas._objects[i].animate("left", data.left, {});
+          this.canvas._objects[i].animate("top", data.top, {
+            onChange: this.canvas.renderAll.bind(this.canvas),
+          });
+          this.canvas._objects[i].set({
+            scaleX: data.scaleX,
+            scaleY: data.scaleY,
+            angle: data.angle,
+            name: data.name,
             notes: data.notes,
           });
           this.canvas._objects[i].setCoords();

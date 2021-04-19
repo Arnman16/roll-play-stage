@@ -1,16 +1,16 @@
 <template>
   <v-app>
-    <v-app-bar dense app color="dark" dark>
+    <v-app-bar dense app color="dark" dark clipped-right>
       <div class="d-flex align-center">
         <!-- LOGO -->
-        <v-img
+        <!-- <v-img
           alt="Vuetify Logo"
           class="shrink mr-2"
           contain
           src="https://cdn.vuetifyjs.com/images/logos/vuetify-logo-dark.png"
           transition="scale-transition"
           width="40"
-        />
+        /> -->
 
         Roll Play Stage
       </div>
@@ -19,7 +19,7 @@
 
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
     </v-app-bar>
-    <v-navigation-drawer v-model="drawer" absolute app bottom right persistent>
+    <v-navigation-drawer v-model="drawer" app persistent right clipped>
       <SidePanel />
       <!-- <v-list nav dense>
         <v-list-item-group

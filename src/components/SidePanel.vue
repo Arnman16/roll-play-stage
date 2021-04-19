@@ -8,12 +8,16 @@
           >
           <v-expansion-panel-content v-show="showSelected">
             <div v-show="selected">
-              <v-img :src="selected.src"></v-img>
+              <v-img v-if="!selected.marker" :src="selected.src"></v-img>
+              <div v-else :class="selected.fill">
+                <v-icon x-large >mdi-map-marker</v-icon>
+                MARKER
+              </div>
               <div>
                 <span class="overline">Name: </span>
                 <span class="caption">{{ selected.name }}</span>
               </div>
-              <div>
+              <div v-if="!selected.marker">
                 <span class="overline">Race: </span>
                 <span class="caption">{{ selected.race }}</span>
               </div>
@@ -42,16 +46,18 @@
         </v-card-title>
         <v-card-text>
           <v-container>
-              <v-text-field v-model="selected.name" label="Name" required></v-text-field>
+            <v-text-field
+              v-model="selected.name"
+              label="Name"
+              required
+            ></v-text-field>
 
-              <v-text-field
-                label="Race"
-                v-model="selected.race"
-              ></v-text-field>
-              <v-textarea
-                label="Notes"
-                v-model="selected.notes"
-              ></v-textarea>
+            <v-text-field
+              v-if="!selected.marker"
+              label="Race"
+              v-model="selected.race"
+            ></v-text-field>
+            <v-textarea label="Notes" v-model="selected.notes"></v-textarea>
           </v-container>
           <small>*indicates required field</small>
         </v-card-text>
@@ -60,9 +66,7 @@
           <v-btn color="blue darken-1" text @click="editTokenDialog = false">
             Close
           </v-btn>
-          <v-btn color="blue darken-1" text @click="saveToken">
-            Save
-          </v-btn>
+          <v-btn color="blue darken-1" text @click="saveToken"> Save </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -76,28 +80,6 @@ export default {
     return {
       selectionToggle: false,
       editTokenDialog: false,
-      images: [
-        {
-          name: "Donald Trump",
-          url: "http://i.imgur.com/QcJru0b.png",
-        },
-        {
-          name: "Hilary Clinton",
-          url: "http://i.imgur.com/Yp9zAaY.png",
-        },
-        {
-          name: "Bernie Sanders",
-          url: "http://i.imgur.com/K4ZroX1.png",
-        },
-        {
-          name: "Barack Obama",
-          url: "http://i.imgur.com/j7zfXYB.png",
-        },
-        {
-          name: "Joe Biden",
-          url: "http://i.imgur.com/ZACKyqE.png",
-        },
-      ],
     };
   },
   computed: {
@@ -115,11 +97,17 @@ export default {
   },
   methods: {
     saveToken() {
-      const tokenRef = db.database().ref("tokens");
-      const token = tokenRef.child(this.selected.__id);
-      token.update(this.selected)
+      if (this.selected.marker === true) {
+        const markerRef = db.database().ref("markers");
+        const marker = markerRef.child(this.selected.__id);
+        marker.update(this.selected);
+      } else {
+        const tokenRef = db.database().ref("tokens");
+        const token = tokenRef.child(this.selected.__id);
+        token.update(this.selected);
+      }
       this.editTokenDialog = false;
-    }
+    },
   },
 };
 </script>

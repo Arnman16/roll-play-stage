@@ -10,7 +10,7 @@
             <div v-show="selected">
               <v-img v-if="!selected.marker" :src="selected.src"></v-img>
               <div v-else :class="selected.fill">
-                <v-icon x-large >mdi-map-marker</v-icon>
+                <v-icon x-large>mdi-map-marker</v-icon>
                 MARKER
               </div>
               <div>
@@ -34,8 +34,24 @@
           </v-expansion-panel-content>
         </v-expansion-panel>
         <v-expansion-panel>
-          <v-expansion-panel-header>OBJECTS</v-expansion-panel-header>
+          <v-expansion-panel-header>Objects</v-expansion-panel-header>
           <v-expansion-panel-content> </v-expansion-panel-content>
+        </v-expansion-panel>
+        <v-expansion-panel>
+          <v-expansion-panel-header>Backgrounds</v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <div v-for="background in backgrounds" :key="background.__id">
+              <v-card
+                class="my-2 mx-0"
+                color="red"
+                @click="setActiveBg(background)"
+              >
+                <v-card-text class="pa-1">
+                  {{ background.name }}
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-expansion-panel-content>
         </v-expansion-panel>
       </v-expansion-panels>
     </v-container>
@@ -91,6 +107,22 @@ export default {
         return this.$store.dispatch("setSelected", newSelection);
       },
     },
+    backgrounds: {
+      get() {
+        return this.$store.state.backgrounds;
+      },
+      set(newBackgrounds) {
+        return this.$store.dispatch("setBackgrounds", newBackgrounds);
+      },
+    },
+    activeBackground: {
+      get() {
+        return this.$store.state.activeBackground;
+      },
+      set(newActiveBackground) {
+        return this.$store.dispatch("setActiveBackground", newActiveBackground);
+      },
+    },
     showSelected() {
       return this.selected && this.selectionToggle;
     },
@@ -107,6 +139,13 @@ export default {
         token.update(this.selected);
       }
       this.editTokenDialog = false;
+    },
+    setActiveBg(background) {
+      let sessionRef = db.database().ref("session");
+      sessionRef.child(1).update({
+        activeBackground: background,
+      });
+      this.activeBackground = background;
     },
   },
 };

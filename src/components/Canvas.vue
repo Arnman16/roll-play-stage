@@ -92,8 +92,6 @@ export default {
     canvas: {},
     minimap: {},
     changing: false,
-    backgrounds: {},
-    bgSelected: 0,
   }),
   computed: {
     selected: {
@@ -102,6 +100,22 @@ export default {
       },
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
+      },
+    },
+    backgrounds: {
+      get() {
+        return this.$store.state.backgrounds;
+      },
+      set(newBackgrounds) {
+        return this.$store.dispatch("setBackgrounds", newBackgrounds);
+      },
+    },
+    activeBackground: {
+      get() {
+        return this.$store.state.activeBackground;
+      },
+      set(newActiveBackground) {
+        return this.$store.dispatch("setActiveBackground", newActiveBackground);
       },
     },
   },
@@ -127,7 +141,7 @@ export default {
       });
 
       const marker = {
-        originX: "center", 
+        originX: "center",
         originY: "center",
         top: pointer.y - 12,
         left: pointer.x,
@@ -208,6 +222,14 @@ export default {
       });
       img.src = url;
     },
+    setBG(url) {
+      fabric.Image.fromURL(url, (img) => {
+        // img.scaleToHeight(this.canvas.getHeight());
+        this.canvas.setBackgroundImage(img);
+        this.canvas.renderAll.bind(this.canvas);
+        this.canvas.renderAll();
+      });
+    },
     addBg(e) {
       console.log("add bg method");
       const url = e.dataTransfer.getData("Text");
@@ -250,6 +272,7 @@ export default {
     this.tokenRef = db.database().ref("tokens");
     this.bgRef = db.database().ref("backgrounds");
     this.markerRef = db.database().ref("markers");
+    this.sessionRef = db.database().ref("session");
 
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
@@ -320,13 +343,7 @@ export default {
         backgrounds.push(bgObject);
       });
       this.backgrounds = backgrounds;
-      this.bgSelected = this.backgrounds.length - 1;
-      fabric.Image.fromURL(this.backgrounds[this.bgSelected].url, (img) => {
-        img.scaleToHeight(this.canvas.getHeight());
-        this.canvas.setBackgroundImage(img);
-      });
-      this.canvas.renderAll.bind(this.canvas);
-      this.canvas.renderAll();
+      this.activeBackground = backgrounds[this.backgrounds.length - 1];
     });
     // this.bgRef.on("child_added", (snapshot) => {
     //   const data = snapshot.val();
@@ -508,6 +525,12 @@ export default {
       const token = this.getTokenFromId(id);
       this.canvas.remove(token);
     });
+    this.sessionRef.on("child_changed", (snapshot) => {
+      this.setBG(snapshot.val().activeBackground.url);
+    });
+    this.sessionRef.on("child_added", (snapshot) => {
+      this.setBG(snapshot.val().activeBackground.url);
+    });
     this.tokenRef.on("child_changed", (snapshot) => {
       if (this.changing) return;
       this.canvas.discardActiveObject();
@@ -515,20 +538,24 @@ export default {
       const id = snapshot.key;
       for (const i in this.canvas._objects) {
         if (this.canvas._objects[i].__id === id) {
-          this.canvas._objects[i].animate("left", data.left, {});
-          this.canvas._objects[i].animate("top", data.top, {
-            onChange: this.canvas.renderAll.bind(this.canvas),
-          });
           this.canvas._objects[i].set({
-            scaleX: data.scaleX,
-            scaleY: data.scaleY,
-            angle: data.angle,
+            // scaleX: data.scaleX,
+            // scaleY: data.scaleY,
+            // angle: data.angle,
             name: data.name,
             race: data.race,
             notes: data.notes,
           });
-          this.canvas._objects[i].setCoords();
+          this.canvas.renderAll();
+          this.canvas._objects[i].animate("angle", data.angle, {});
+          this.canvas._objects[i].animate("scaleX", data.scaleX, {});
+          this.canvas._objects[i].animate("scaleY", data.scaleY, {});
+          this.canvas._objects[i].animate("left", data.left, {});
+          this.canvas._objects[i].animate("top", data.top, {
+            onChange: this.canvas.renderAll.bind(this.canvas),
+          });
           this.canvas.requestRenderAll();
+          this.canvas._objects[i].setCoords();
         }
       }
     });

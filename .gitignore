@@ -1,6 +1,12 @@
 .DS_Store
 node_modules
 /dist
+src/db.js
+.firebase
+/.firebase
+firebase.json
+.firebaserc
+vscode.bat
 
 
 # local env files

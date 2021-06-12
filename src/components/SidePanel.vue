@@ -43,10 +43,11 @@
             <div v-for="background in backgrounds" :key="background.__id">
               <v-card
                 class="my-2 mx-0"
-                color="red"
+                tile
+                :color="(background.__id == activeBackground.__id) ? 'light-blue darken-4' : 'light-blue'"
                 @click="setActiveBg(background)"
               >
-                <v-card-text class="pa-1">
+                <v-card-text class="pa-1 text-center">
                   {{ background.name }}
                 </v-card-text>
               </v-card>

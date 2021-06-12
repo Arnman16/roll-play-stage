@@ -380,6 +380,8 @@ export default {
           race: data.race,
           marker: false,
           notes: data.notes,
+          originX: "center",
+          originY: "center",
         });
         img.setCoords();
       });

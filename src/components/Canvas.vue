@@ -624,7 +624,10 @@ export default {
       let drawing = newDrawing.toJSON();
       drawing.name = "";
       drawing.notes = "";
-      (drawing.deletable = true), (drawing.left = drawing.left + offsetX);
+      drawing.deletable = true;
+      drawing.selectable = true;
+      drawing.evented = true;
+      drawing.left = drawing.left + offsetX;
       drawing.top = drawing.top + offsetY;
       this.drawingsRef.push(drawing);
     });

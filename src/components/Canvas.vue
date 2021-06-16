@@ -66,6 +66,9 @@
           ></v-select>
         </v-col>
         <v-col>
+          <v-checkbox label="draw" v-model="drawMode"></v-checkbox>
+        </v-col>
+        <v-col>
           <v-spacer></v-spacer>
         </v-col>
       </v-row>
@@ -84,6 +87,11 @@ export default {
   data: () => ({
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
+    drawMode: false,
+    eraseMode: false,
+    drawing: false,
+    erasing: false,
+    toolTip: "Tool Tip",
     markerColor: null,
     bgDrag: false,
     tokenRef: {},
@@ -92,6 +100,9 @@ export default {
     canvas: {},
     minimap: {},
     changing: false,
+    drawingMode: "add",
+    pencilWidth: 25,
+    fillColor: "rgba(255,0,0,.5)",
   }),
   computed: {
     selected: {
@@ -117,6 +128,14 @@ export default {
       set(newActiveBackground) {
         return this.$store.dispatch("setActiveBackground", newActiveBackground);
       },
+    },
+  },
+  watch: {
+    drawMode(val) {
+      this.canvas.isDrawingMode = val;
+    },
+    eraseMode(val) {
+      console.log("eraseMode: ", val);
     },
   },
   methods: {
@@ -153,9 +172,13 @@ export default {
         strokeWidth: 3,
         shadow: shadow,
         opacity: 0.8,
+        deletable: true,
+        selectable: true,
+        evented: true,
         name: "",
         notes: "",
       };
+      console.log("createMarker()");
       this.markerRef.push(marker);
     },
     testMethod() {
@@ -173,8 +196,10 @@ export default {
       // console.log("Zoom", this.canvas.getZoom());
     },
     resetZoom() {
-      this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+      let ratio = this.canvas.getHeight() / this.canvas.backgroundImage.height;
+      this.canvas.setViewportTransform([ratio, 0, 0, ratio, 0, 0]);
       console.log("resetZoom");
+      console.log(this.canvas._objects);
     },
     removeToken() {
       const selection = this.canvas.getActiveObject();
@@ -184,14 +209,21 @@ export default {
         selectedTokens = selection._objects;
       } else selectedTokens.push(selection);
       selectedTokens.forEach((token) => {
-        if (token.marker) {
-          const markerFB = this.markerRef.child(token.__id);
-          markerFB.remove();
-        } else {
-          const tokenFB = this.tokenRef.child(token.__id);
-          tokenFB.remove();
+        if (token.deletable) {
+          if (token.type === "path") {
+            const drawingFB = this.drawingsRef.child(token.__id);
+            drawingFB.remove();
+          } else if (token.marker) {
+            const markerFB = this.markerRef.child(token.__id);
+            markerFB.remove();
+          } else {
+            const tokenFB = this.tokenRef.child(token.__id);
+            tokenFB.remove();
+          }
         }
       });
+      this.canvas.discardActiveObject();
+      this.canvas.requestRenderAll();
     },
     getTokenFromId(id) {
       return this.canvas.getObjects().filter((obj) => obj.__id === id)[0];
@@ -217,6 +249,9 @@ export default {
           scaleY: 1,
           race: "",
           notes: "",
+          deletable: true,
+          selectable: true,
+          evented: true,
         };
         this.tokenRef.push(token);
       });
@@ -228,6 +263,7 @@ export default {
         this.canvas.setBackgroundImage(img);
         this.canvas.renderAll.bind(this.canvas);
         this.canvas.renderAll();
+        this.resetZoom();
       });
     },
     addBg(e) {
@@ -243,6 +279,9 @@ export default {
           url: url,
           height: height,
           width: width,
+          deletable: true,
+          selectable: true,
+          evented: true,
           scaleX: 1,
           scaleY: 1,
         };
@@ -273,14 +312,29 @@ export default {
     this.bgRef = db.database().ref("backgrounds");
     this.markerRef = db.database().ref("markers");
     this.sessionRef = db.database().ref("session");
+    this.drawingsRef = db.database().ref("drawings");
 
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
       const fullHeight = window.innerHeight - 100;
       this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     });
+    window.addEventListener("keyup", (e) => {
+      if (e.key == "Escape") {
+        this.canvas.discardActiveObject();
+        this.canvas.requestRenderAll();
+      }
+      if (e.key == "Delete") {
+        this.removeToken();
+      }
+    });
     this.canvas.on("mouse:down", (opt) => {
       var evt = opt.e;
+      if (this.drawMode) {
+        this.drawing = true;
+        console.log("start drawing");
+        return;
+      }
       if (evt.button === 2 || evt.altKey === true) {
         this.canvas.isDragging = true;
         this.canvas.selection = false;
@@ -290,6 +344,7 @@ export default {
     });
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
+        console.log("dragging");
         var e = opt.e;
         var vpt = this.canvas.viewportTransform;
         vpt[4] += e.clientX - this.canvas.lastPosX;
@@ -299,14 +354,43 @@ export default {
         this.canvas.lastPosY = e.clientY;
       }
     });
-    this.canvas.on("mouse:up", (e) => {
+    var toolTip = new fabric.Text(this.toolTip, {
+      fontSize: 15,
+      originX: "center",
+      originY: "center",
+      fill: "white",
+      backgroundColor: "black",
+      opacity: 0.6,
+    });
+    this.canvas.add(toolTip);
+    this.canvas.renderAll();
+    this.canvas.on("mouse:up", (opt) => {
+      if (this.drawing) {
+        console.log("stop drawing");
+        this.drawing = false;
+      }
+      if (opt.target) {
+        const selection = opt.target;
+        if (!selection) return;
+        if (selection.type == "activeSelection") return;
+        this.selected = selection.toJSON([
+          "__id",
+          "deletable",
+          "selectable",
+          "evented",
+          "name",
+          "race",
+          "notes",
+          "marker",
+        ]);
+      }
       // on mouse up we want to recalculate new interaction
       // for all objects, so we call setViewportTransform
       this.canvas.setViewportTransform(this.canvas.viewportTransform);
       this.canvas.isDragging = false;
       this.canvas.selection = true;
       if (this.addMarker) {
-        this.createMarker(e);
+        this.createMarker(opt);
         this.setMarkerColor();
       }
     });
@@ -343,24 +427,16 @@ export default {
         backgrounds.push(bgObject);
       });
       this.backgrounds = backgrounds;
-      this.activeBackground = backgrounds[this.backgrounds.length - 1];
+      if (!this.activeBackground) {
+        this.activeBackground = backgrounds[this.backgrounds.length - 1];
+      }
     });
-    // this.bgRef.on("child_added", (snapshot) => {
-    //   const data = snapshot.val();
-    //   console.log("BG ADDED", data.url);
-    //   fabric.Image.fromURL(data.url, (img) => {
-    //     this.canvas.setBackgroundImage(
-    //       img,
-    //       this.canvas.renderAll.bind(this.canvas)
-    //     );
-    //   });
-    // });
-
     this.tokenRef.on("child_added", (snapshot) => {
       console.log("CHILD_ADDED", snapshot.val().url);
       const data = snapshot.val();
       fabric.Image.fromURL(data.url, (img) => {
-        this.canvas.add(img).setActiveObject(img);
+        // this.canvas.add(img).setActiveObject(img);
+        this.canvas.add(img);
         var shadow = new fabric.Shadow({
           color: "black",
           blur: 50,
@@ -374,6 +450,9 @@ export default {
           left: data.left,
           scaleX: data.scaleX,
           scaleY: data.scaleY,
+          deletable: data.deletable,
+          selectable: data.selectable,
+          evented: data.evented,
           angle: data.angle,
           shadow: shadow,
           name: data.name,
@@ -394,11 +473,40 @@ export default {
         __id: snapshot.key,
         marker: true,
         name: data.name,
+        deletable: data.deletable,
+        selectable: data.selectable,
+        evented: data.evented,
         notes: data.notes,
       });
-      this.canvas.add(triangle).setActiveObject(triangle);
+      // this.canvas.add(triangle).setActiveObject(triangle);
+      this.canvas.add(triangle);
       triangle.setCoords();
       this.canvas.renderAll();
+    });
+    this.drawingsRef.on("child_added", (snapshot) => {
+      console.log("Drawing Added", snapshot.val());
+      const data = snapshot.val();
+      var path = new fabric.Path(data.path, {
+        fill: null,
+        stroke: data.stroke,
+        strokeWidth: data.strokeWidth,
+        left: data.left,
+        top: data.top,
+        angle: data.angle,
+        scaleX: data.scaleX,
+        scaleY: data.scaleY,
+        originX: data.originX,
+        originY: data.originY,
+      });
+      path.set({
+        __id: snapshot.key,
+        deletable: data.deletable,
+        selectable: data.selectable,
+        evented: data.evented,
+        name: data.name,
+        notes: data.notes,
+      });
+      this.canvas.add(path);
     });
     this.canvas.on("selection:created", (e) => {
       console.log("object selected");
@@ -406,16 +514,24 @@ export default {
       const selection = this.canvas.getActiveObject();
       if (!selection) return;
       if (selection.type == "activeSelection") return;
+      if (e.target.type !== "path") {
+        e.target.set({
+          scaleX: e.target.scaleX / 1.1,
+          scaleY: e.target.scaleY / 1.1,
+        });
+      }
       this.selected = selection.toJSON([
         "__id",
+        "deletable",
+        "selectable",
+        "evented",
         "name",
         "race",
         "notes",
         "marker",
       ]);
-      e.target.set({
-        scaleX: e.target.scaleX / 1.1,
-        scaleY: e.target.scaleX / 1.1,
+      toolTip.set({
+        visible: false,
       });
       this.canvas.renderAll();
     });
@@ -427,45 +543,90 @@ export default {
     this.canvas.on("selection:updated", () => {
       console.log("object selection updated");
       this.objectSelected = true;
-      const selection = this.canvas.getActiveObject();
-      if (!selection) return;
-      if (selection.type == "activeSelection") return;
-      this.selected = selection.toJSON([
-        "__id",
-        "name",
-        "race",
-        "notes",
-        "marker",
-      ]);
+      toolTip.set({
+        visible: false,
+      });
+      this.canvas.requestRenderAll();
     });
     this.canvas.on("object:moving", () => {
+      toolTip.set({
+        visible: false,
+      });
+      this.canvas.requestRenderAll();
       this.changing = true;
     });
     this.canvas.on("object:rotating", () => {
+      toolTip.set({
+        visible: false,
+      });
+      this.canvas.requestRenderAll();
       this.changing = true;
     });
     this.canvas.on("object:scaling", () => {
+      toolTip.set({
+        visible: false,
+      });
+      this.canvas.requestRenderAll();
       this.changing = true;
     });
     this.canvas.on("mouse:over", (e) => {
       if (e.target == null) return;
+      var topOffset =
+        e.target.top - (e.target.height * e.target.scaleY) / 2 - 20;
+      if (e.target.name) {
+        toolTip.set({
+          text: e.target.name,
+          visible: true,
+          left: e.target.left,
+          top: topOffset,
+        });
+      }
       if (this.objectSelected) return;
       if (this.canvas.isDragging) return;
-      e.target.set({
-        scaleX: e.target.scaleX * 1.1,
-        scaleY: e.target.scaleY * 1.1,
-      });
+      if (e.target.type !== "path") {
+        e.target.set({
+          scaleX: e.target.scaleX * 1.1,
+          scaleY: e.target.scaleY * 1.1,
+        });
+      }
       this.canvas.renderAll();
     });
     this.canvas.on("mouse:out", (e) => {
+      toolTip.set({
+        visible: false,
+      });
+      this.canvas.renderAll();
       if (e.target == null) return;
       if (this.objectSelected) return;
       if (this.canvas.isDragging) return;
-      e.target.set({
-        scaleX: e.target.scaleX / 1.1,
-        scaleY: e.target.scaleY / 1.1,
+      if (e.target.type !== "path") {
+        e.target.set({
+          scaleX: e.target.scaleX / 1.1,
+          scaleY: e.target.scaleY / 1.1,
+        });
+      }
+      toolTip.set({
+        visible: false,
       });
       this.canvas.renderAll();
+    });
+    this.canvas.on("path:created", (e) => {
+      var newDrawing = e.path;
+      this.canvas.remove(newDrawing);
+      if (newDrawing.path.length < 4) return;
+      newDrawing.set({
+        originX: "center",
+        originY: "center",
+      });
+      const offsetX = newDrawing.width / 2;
+      const offsetY = newDrawing.height / 2;
+      console.log(offsetX, offsetY, newDrawing.top, newDrawing.left);
+      let drawing = newDrawing.toJSON();
+      drawing.name = "";
+      drawing.notes = "";
+      (drawing.deletable = true), (drawing.left = drawing.left + offsetX);
+      drawing.top = drawing.top + offsetY;
+      this.drawingsRef.push(drawing);
     });
     this.canvas.on("object:modified", (e) => {
       if (!this.changing) return;
@@ -476,6 +637,9 @@ export default {
         const brokenObjects = this.canvas.getActiveObjects();
         const canvasJSON = this.canvas.toJSON([
           "__id",
+          "deletable",
+          "selectable",
+          "evented",
           "name",
           "race",
           "notes",
@@ -483,18 +647,39 @@ export default {
         ]).objects;
         brokenObjects.forEach((broke) => {
           canvasJSON.forEach((json) => {
-            if (!broke.src) return;
             if (broke.__id === json.__id) objects.push(json);
           });
         });
       } else objects.push(e.target);
       objects.forEach((object) => {
-        if (object.marker) {
+        if (object.type === "path") {
+          console.log("drawing update");
+          const drawing = this.drawingsRef.child(object.__id);
+          const updates = {
+            top: object.top,
+            left: object.left,
+            scaleX: object.scaleX,
+            scaleY: object.scaleY,
+            deletable: object.deletable,
+            selectable: object.selectable,
+            evented: object.evented,
+            angle: object.angle,
+            path: object.path,
+            originX: object.originX,
+            originY: object.originY,
+            stroke: object.stroke,
+            strokeWidth: object.strokeWidth,
+          };
+          drawing.update(updates);
+        } else if (object.marker) {
           const marker = this.markerRef.child(object.__id);
           const updates = {
             top: object.top,
             left: object.left,
             scaleX: object.scaleX,
+            deletable: object.deletable,
+            selectable: object.selectable,
+            evented: object.evented,
             scaleY: object.scaleY,
             angle: object.angle,
           };
@@ -504,6 +689,9 @@ export default {
           const updates = {
             top: object.top,
             left: object.left,
+            deletable: object.deletable,
+            selectable: object.selectable,
+            evented: object.evented,
             scaleX: object.scaleX,
             scaleY: object.scaleY,
             angle: object.angle,
@@ -527,26 +715,35 @@ export default {
       const token = this.getTokenFromId(id);
       this.canvas.remove(token);
     });
+    this.drawingsRef.on("child_removed", (snapshot) => {
+      console.log("drawing removed");
+      const id = snapshot.key;
+      console.log(id);
+      const token = this.getTokenFromId(id);
+      this.canvas.remove(token);
+    });
     this.sessionRef.on("child_changed", (snapshot) => {
       this.setBG(snapshot.val().activeBackground.url);
+      this.activeBackground = snapshot.val().activeBackground;
     });
     this.sessionRef.on("child_added", (snapshot) => {
       this.setBG(snapshot.val().activeBackground.url);
+      this.activeBackground = snapshot.val().activeBackground;
     });
     this.tokenRef.on("child_changed", (snapshot) => {
       if (this.changing) return;
-      this.canvas.discardActiveObject();
+      // this.canvas.discardActiveObject();
       const data = snapshot.val();
       const id = snapshot.key;
       for (const i in this.canvas._objects) {
         if (this.canvas._objects[i].__id === id) {
           this.canvas._objects[i].set({
-            // scaleX: data.scaleX,
-            // scaleY: data.scaleY,
-            // angle: data.angle,
             name: data.name,
             race: data.race,
             notes: data.notes,
+            deletable: data.deletable,
+            selectable: data.selectable,
+            evented: data.evented,
           });
           this.canvas.renderAll();
           this.canvas._objects[i].animate("angle", data.angle, {});
@@ -563,7 +760,7 @@ export default {
     });
     this.markerRef.on("child_changed", (snapshot) => {
       if (this.changing) return;
-      this.canvas.discardActiveObject();
+      // this.canvas.discardActiveObject();
       const data = snapshot.val();
       const id = snapshot.key;
       for (const i in this.canvas._objects) {
@@ -575,9 +772,40 @@ export default {
           this.canvas._objects[i].set({
             scaleX: data.scaleX,
             scaleY: data.scaleY,
+            deletable: data.deletable,
+            selectable: data.selectable,
+            evented: data.evented,
             angle: data.angle,
             name: data.name,
             notes: data.notes,
+          });
+          this.canvas._objects[i].setCoords();
+          this.canvas.requestRenderAll();
+        }
+      }
+    });
+    this.drawingsRef.on("child_changed", (snapshot) => {
+      if (this.changing) return;
+      // this.canvas.discardActiveObject();
+      const data = snapshot.val();
+      const id = snapshot.key;
+      for (const i in this.canvas._objects) {
+        if (this.canvas._objects[i].__id === id) {
+          this.canvas._objects[i].animate("left", data.left, {});
+          this.canvas._objects[i].animate("top", data.top, {
+            onChange: this.canvas.renderAll.bind(this.canvas),
+          });
+          this.canvas._objects[i].set({
+            scaleX: data.scaleX,
+            scaleY: data.scaleY,
+            deletable: data.deletable,
+            selectable: data.selectable,
+            evented: data.evented,
+            angle: data.angle,
+            name: data.name,
+            notes: data.notes,
+            stroke: data.stroke,
+            strokeWidth: data.strokeWidth,
           });
           this.canvas._objects[i].setCoords();
           this.canvas.requestRenderAll();

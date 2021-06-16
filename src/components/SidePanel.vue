@@ -17,7 +17,7 @@
                 <span class="overline">Name: </span>
                 <span class="caption">{{ selected.name }}</span>
               </div>
-              <div v-if="!selected.marker">
+              <div v-if="!(selected.marker || selected.type === 'path')">
                 <span class="overline">Race: </span>
                 <span class="caption">{{ selected.race }}</span>
               </div>
@@ -44,7 +44,11 @@
               <v-card
                 class="my-2 mx-0"
                 tile
-                :color="(background.__id == activeBackground.__id) ? 'light-blue darken-4' : 'light-blue'"
+                :color="
+                  background.__id == activeBackground.__id
+                    ? 'light-blue darken-4'
+                    : 'light-blue'
+                "
                 @click="setActiveBg(background)"
               >
                 <v-card-text class="pa-1 text-center">
@@ -66,17 +70,34 @@
             <v-text-field
               v-model="selected.name"
               label="Name"
-              required
+              v-on:keyup.enter="saveToken"
             ></v-text-field>
 
             <v-text-field
-              v-if="!selected.marker"
+              v-if="!(selected.marker || selected.type === 'path')"
               label="Race"
               v-model="selected.race"
+              v-on:keyup.enter="saveToken"
             ></v-text-field>
-            <v-textarea label="Notes" v-model="selected.notes"></v-textarea>
+            <v-textarea
+              label="Notes"
+              v-model="selected.notes"
+              v-on:keyup.enter="saveToken"
+            ></v-textarea>
+            <v-checkbox
+              label="Deletable"
+              v-model="selected.deletable"
+            ></v-checkbox>
+            <v-checkbox
+              label="Selectable"
+              v-model="selected.selectable"
+            ></v-checkbox>
+            <v-checkbox
+              label="Evented"
+              v-model="selected.evented"
+            ></v-checkbox>
           </v-container>
-          <small>*indicates required field</small>
+          <!-- <small>*indicates required field</small> -->
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -130,7 +151,11 @@ export default {
   },
   methods: {
     saveToken() {
-      if (this.selected.marker === true) {
+      if (this.selected.type === "path") {
+        const drawingRef = db.database().ref("drawings");
+        const drawing = drawingRef.child(this.selected.__id);
+        drawing.update(this.selected);
+      } else if (this.selected.marker === true) {
         const markerRef = db.database().ref("markers");
         const marker = markerRef.child(this.selected.__id);
         marker.update(this.selected);

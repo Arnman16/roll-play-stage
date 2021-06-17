@@ -1,18 +1,12 @@
 <template>
-  <v-container fluid class="pa-0">
-    <div
-      v-cloak
-      @drop.prevent="addTokenDrag"
-      @dragover.prevent
-      v-on:dblclick="resetZoom"
-    >
-      <v-card height="100%">
-        <canvas
-          ref="can"
-          width="640"
-          height="480"
-          style="border: 1px solid black"
-        ></canvas>
+  <div>
+    <v-container fluid class="pa-0">
+      <div
+        @drop.prevent="addTokenDrag"
+        @dragover.prevent
+        v-on:dblclick="resetZoom"
+      >
+        <canvas ref="can"></canvas>
         <div v-cloak @drop.prevent="bgDrag = true" @dragover.prevent>
           <v-card
             outlined
@@ -22,61 +16,169 @@
             <canvas ref="mini" width="80" height="80"></canvas>
           </v-card>
         </div>
-      </v-card>
-    </div>
-    <v-container class="ma-0 pa-0" fluid>
-      <v-row dense flex>
-        <v-col dense>
+        <v-speed-dial
+          fab
+          v-model="fab"
+          bottom
+          left
+          direction="right"
+          open-on-hover
+          transition="slide-y-reverse-transition"
+          style="position: absolute; bottom: -20px; left: 10px"
+        >
+          <template v-slot:activator>
+            <v-btn v-model="fab" color="blue darken-2" dark fab>
+              <v-icon v-if="fab">
+                mdi-close
+              </v-icon>
+              <v-icon v-else>
+                mdi-cog
+              </v-icon>
+            </v-btn>
+          </template>
+          <v-btn fab dark small color="green">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn fab dark small color="indigo">
+            <v-icon>mdi-plus</v-icon>
+          </v-btn>
           <v-btn
-            block
-            class="ml-1 mr-1"
-            dense
-            :disabled="!objectSelected"
+            v-show="objectSelected"
+            fab
+            dark
+            small
+            color="red"
             @click="removeToken"
-            >remove</v-btn
           >
-        </v-col>
-        <!-- <v-col>
-          <v-btn block class="ml-1 mr-1" dense @click="testMethod"
-            >TEST BUTTON</v-btn
-          >
-        </v-col> -->
-        <v-col>
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
           <v-btn
-            :depressed="addMarker"
-            block
-            class="ml-1 mr-1"
-            :color="markerColor"
-            dense
-            @click="setMarkerColor"
-            >Add Marker</v-btn
+            fab
+            dark
+            small
+            color="yellow darken-4"
+            @click="drawMode = !drawMode"
           >
-        </v-col>
-        <v-col>
-          <v-select
-            v-show="addMarker"
-            block
-            class="ml-1 mr-1"
-            dense
-            :items="colors"
-            v-model="markerColor"
-            outlined
-            width="100"
-            label="Marker Color"
-          ></v-select>
-        </v-col>
-        <v-col>
-          <v-checkbox label="draw" v-model="drawMode"></v-checkbox>
-        </v-col>
-        <v-col>
+            <v-icon>{{
+              drawMode ? "mdi-cursor-default-outline" : "mdi-brush"
+            }}</v-icon>
+          </v-btn>
+          <v-btn
+            fab
+            :color="colorPickerColor"
+            v-show="drawMode"
+            small
+            @click="colorPickerDialog = true"
+          ></v-btn>
+        </v-speed-dial>
+      </div>
+      <!-- <v-container class="ma-0 pa-0">
+        <v-row dense>
+          <v-col>
+            <v-btn
+              :depressed="addMarker"
+              block
+              class="ml-1 mr-1"
+              :color="markerColor"
+              dense
+              @click="setMarkerColor"
+              >Add Marker</v-btn
+            >
+          </v-col>
+          <v-col>
+            <v-select
+              v-show="addMarker"
+              block
+              class="ml-1 mr-1"
+              dense
+              :items="colors"
+              v-model="markerColor"
+              outlined
+              width="100"
+              label="Marker Color"
+            ></v-select>
+          </v-col>
+          <v-col></v-col>
           <v-spacer></v-spacer>
+        </v-row>
+      </v-container> -->
+    </v-container>
+    <v-footer
+      style="z-index: 0;"
+      height="34"
+      color="rgba(0,0,0,0.5)"
+      fixed
+      app
+      padless
+      outlined
+    >
+      <v-row class="py-0 mx-4">
+        <v-col cols="4"></v-col>
+
+        <v-col class="text-center text-caption pa-1 my-auto" cols="4">
+          {{ new Date().getFullYear() }} — <strong>Roll Play Stage</strong>
+        </v-col>
+        <v-col></v-col>
+        <v-col
+          class="text-center text-caption pa-1 font-weight-thin my-auto"
+          style="border: 1px solid rgba(255,255,255, 0.2); opacity: 0.3;"
+          cols="2"
+        >
+          bg: {{ this.activeBackground.name }} [{{
+            this.activeBackground.width + ", " + this.activeBackground.height
+          }}] : {{ this.zoom }}x
+        </v-col>
+        <v-col
+          cols="1"
+          class="text-center text-caption pa-1 font-weight-thin my-auto"
+          style="border: 1px solid rgba(255,255,255, 0.2); opacity: 0.3;"
+        >
+          {{ mouse.x + ", " + mouse.y + "px" }}
         </v-col>
       </v-row>
-    </v-container>
-    <!-- <div v-for="(token, index) in tokens" :key="token.__id">
-      <br />{{ index }}. {{ token.name }}
-    </div> -->
-  </v-container>
+    </v-footer>
+    <v-dialog
+      v-model="colorPickerDialog"
+      max-width="500px"
+      transition="dialog-transition"
+    >
+      <v-card class="mx-auto pa-1" color="grey darken-3">
+        <v-toolbar dense flat>
+          <v-toolbar-title small class="mx-auto">Paint Options</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn icon @click="colorPickerDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <v-sheet class="pa-3">
+          <v-color-picker
+            dot-size="19"
+            hide-inputs
+            class="mx-auto pt-5"
+            v-model="colorPickerColor"
+          >
+          </v-color-picker>
+          <v-divider class="my-2"></v-divider>
+          <div class="pa-5">
+            <div class="text-caption text-center">
+              Line Size
+            </div>
+            <v-slider
+              min="1"
+              max="500"
+              :color="colorPickerColor"
+              thumb-color="grey darken-2"
+              thumb-label
+              hide-details
+              class="mx-10 "
+              v-model="strokeWidth"
+              hint="Line Size"
+            ></v-slider>
+          </div>
+        </v-sheet>
+      </v-card>
+    </v-dialog>
+  </div>
 </template>
 
 <script>
@@ -89,10 +191,18 @@ export default {
     addMarker: false,
     drawMode: false,
     eraseMode: false,
+    colorPickerDialog: false,
+    colorPickerColor: "rgba(0,0,0,1)",
+    strokeWidth: 1,
     drawing: false,
     erasing: false,
     toolTip: "Tool Tip",
     markerColor: null,
+    mouse: {
+      x: 0,
+      y: 0,
+    },
+    zoom: 1,
     bgDrag: false,
     tokenRef: {},
     objectSelected: false,
@@ -103,8 +213,22 @@ export default {
     drawingMode: "add",
     pencilWidth: 25,
     fillColor: "rgba(255,0,0,.5)",
+    fab: false,
+    tabs: null,
   }),
   computed: {
+    activeFab() {
+      switch (this.tabs) {
+        case "one":
+          return { class: "purple", icon: "account_circle" };
+        case "two":
+          return { class: "red", icon: "edit" };
+        case "three":
+          return { class: "green", icon: "keyboard_arrow_up" };
+        default:
+          return {};
+      }
+    },
     selected: {
       get() {
         return this.$store.state.selected;
@@ -136,6 +260,12 @@ export default {
     },
     eraseMode(val) {
       console.log("eraseMode: ", val);
+    },
+    colorPickerColor(color) {
+      this.canvas.freeDrawingBrush.color = color;
+    },
+    strokeWidth(width) {
+      this.canvas.freeDrawingBrush.width = width;
     },
   },
   methods: {
@@ -198,8 +328,7 @@ export default {
     resetZoom() {
       let ratio = this.canvas.getHeight() / this.canvas.backgroundImage.height;
       this.canvas.setViewportTransform([ratio, 0, 0, ratio, 0, 0]);
-      console.log("resetZoom");
-      console.log(this.canvas._objects);
+      this.zoom = this.canvas.getZoom().toFixed(2);
     },
     removeToken() {
       const selection = this.canvas.getActiveObject();
@@ -300,7 +429,7 @@ export default {
       stopContextMenu: true, // <--  prevent context menu from showing
     });
     const fullWidth = window.innerWidth;
-    const fullHeight = window.innerHeight - 100;
+    const fullHeight = window.innerHeight - 85;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     this.minimap = new fabric.Canvas(mini, {
       // http://fabricjs.com/build-minimap
@@ -316,7 +445,7 @@ export default {
 
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight - 100;
+      const fullHeight = window.innerHeight - 85;
       this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     });
     window.addEventListener("keyup", (e) => {
@@ -326,6 +455,15 @@ export default {
       }
       if (e.key == "Delete") {
         this.removeToken();
+      }
+      if (e.key == "b") {
+        this.drawMode = !this.drawMode;
+      }
+      if (e.key == "c") {
+        this.colorPickerDialog = !this.colorPickerDialog;
+      }
+      if (e.key == "a") {
+        // select all
       }
     });
     this.canvas.on("mouse:down", (opt) => {
@@ -344,15 +482,18 @@ export default {
     });
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
+        var vpt = this.canvas.viewportTransform;
         console.log("dragging");
         var e = opt.e;
-        var vpt = this.canvas.viewportTransform;
         vpt[4] += e.clientX - this.canvas.lastPosX;
         vpt[5] += e.clientY - this.canvas.lastPosY;
         this.canvas.requestRenderAll();
         this.canvas.lastPosX = e.clientX;
         this.canvas.lastPosY = e.clientY;
       }
+      const pointer = this.canvas.getPointer();
+      this.mouse.x = pointer.x.toFixed();
+      this.mouse.y = pointer.y.toFixed();
     });
     var toolTip = new fabric.Text(this.toolTip, {
       fontSize: 15,
@@ -361,6 +502,7 @@ export default {
       fill: "white",
       backgroundColor: "black",
       opacity: 0.6,
+      visible: false,
     });
     this.canvas.add(toolTip);
     this.canvas.renderAll();
@@ -400,6 +542,7 @@ export default {
       var delta = opt.e.deltaY;
       var zoom = this.canvas.getZoom();
       zoom *= 0.999 ** delta;
+      this.zoom = zoom.toFixed(2);
       if (zoom > 20) zoom = 20;
       if (zoom < 0.1) zoom = 0.1;
       this.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
@@ -486,18 +629,7 @@ export default {
     this.drawingsRef.on("child_added", (snapshot) => {
       console.log("Drawing Added", snapshot.val());
       const data = snapshot.val();
-      var path = new fabric.Path(data.path, {
-        fill: null,
-        stroke: data.stroke,
-        strokeWidth: data.strokeWidth,
-        left: data.left,
-        top: data.top,
-        angle: data.angle,
-        scaleX: data.scaleX,
-        scaleY: data.scaleY,
-        originX: data.originX,
-        originY: data.originY,
-      });
+      var path = new fabric.Path(data.path, data);
       path.set({
         __id: snapshot.key,
         deletable: data.deletable,
@@ -618,8 +750,8 @@ export default {
         originX: "center",
         originY: "center",
       });
-      const offsetX = newDrawing.width / 2;
-      const offsetY = newDrawing.height / 2;
+      const offsetX = (newDrawing.width + this.strokeWidth) / 2;
+      const offsetY = (newDrawing.height + this.strokeWidth) / 2;
       console.log(offsetX, offsetY, newDrawing.top, newDrawing.left);
       let drawing = newDrawing.toJSON();
       drawing.name = "";
@@ -629,6 +761,7 @@ export default {
       drawing.evented = true;
       drawing.left = drawing.left + offsetX;
       drawing.top = drawing.top + offsetY;
+      drawing.fill = "transparent";
       this.drawingsRef.push(drawing);
     });
     this.canvas.on("object:modified", (e) => {
@@ -804,6 +937,7 @@ export default {
             deletable: data.deletable,
             selectable: data.selectable,
             evented: data.evented,
+            globalCompositeOperation: data.globalCompositeOperation,
             angle: data.angle,
             name: data.name,
             notes: data.notes,
@@ -818,7 +952,7 @@ export default {
   },
 };
 </script>
-<style scoped>
+<style>
 .minimap {
   border: 1px solid blue;
   position: absolute !important;

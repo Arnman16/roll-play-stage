@@ -178,6 +178,40 @@
         </v-sheet>
       </v-card>
     </v-dialog>
+    <v-menu
+      v-model="showObjectMenu"
+      :position-x="menuX"
+      :position-y="menuY"
+      absolute
+      offset-y
+    >
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in objectMenuItems"
+          :key="index"
+          @click="fireMenuTest(item.action)"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+    <v-menu
+      v-model="showBgMenu"
+      :position-x="menuX"
+      :position-y="menuY"
+      absolute
+      offset-y
+    >
+      <v-list>
+        <v-list-item
+          v-for="(item, index) in bgMenuItems"
+          :key="index"
+          @click="fireMenuTest(item.action)"
+        >
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
   </div>
 </template>
 
@@ -196,7 +230,9 @@ export default {
     strokeWidth: 1,
     drawing: false,
     erasing: false,
-    toolTip: "Tool Tip",
+    dragging: false,
+    toolTip: {},
+    toolTipText: "Tool Tip",
     markerColor: null,
     mouse: {
       x: 0,
@@ -215,6 +251,22 @@ export default {
     fillColor: "rgba(255,0,0,.5)",
     fab: false,
     tabs: null,
+    showObjectMenu: false,
+    showBgMenu: false,
+    menuX: 0,
+    menuY: 0,
+    objectMenuItems: [
+      { title: "Edit", action: "edit" },
+      { title: "Delete", action: "delete" },
+      { title: "Lock", action: "lock" },
+    ],
+    bgMenuItems: [
+      { title: "Add Token", action: "addtoken" },
+      { title: "Add Marker", action: "addmarker" },
+      { title: "Add Light Source", action: "addlightsource" },
+      { title: "Change Background", action: "changebackground" },
+    ],
+    clickData: {},
   }),
   computed: {
     activeFab() {
@@ -269,6 +321,46 @@ export default {
     },
   },
   methods: {
+    fireMenuTest(action) {
+      console.log(action, " clicked");
+      if (action === "lock") {
+        // console.log(this.clickData);
+        let target = this.clickData.target;
+        target.selectable = !target.selectable;
+        var token = this.tokenRef.child(target.__id);
+        if (target.type === "path") {
+          token = this.drawingsRef.child(target.__id);
+        } else if (target.marker) {
+          token = this.markerRef.child(target.__id);
+        }
+        const updates = {
+          selectable: target.selectable,
+        };
+        token.update(updates);
+      }
+    },
+    getMenu(opt) {
+      this.clickData = opt;
+      if (opt.target) {
+        if (opt.target.selectable) {
+          this.objectMenuItems[2].title = "Lock";
+        } else {
+          this.objectMenuItems[2].title = "Unlock";
+        }
+      }
+      opt.e.preventDefault();
+      this.showObjectMenu = false;
+      this.showBgMenu = false;
+      this.menuX = opt.e.clientX;
+      this.menuY = opt.e.clientY;
+      this.$nextTick(() => {
+        if (opt.target) {
+          this.showObjectMenu = true;
+        } else {
+          this.showBgMenu = true;
+        }
+      });
+    },
     setMarkerColor() {
       if (this.addMarker) {
         this.markerColor = "dark";
@@ -463,7 +555,7 @@ export default {
         this.colorPickerDialog = !this.colorPickerDialog;
       }
       if (e.key == "a") {
-        // select all
+        // select alla
       }
     });
     this.canvas.on("mouse:down", (opt) => {
@@ -483,7 +575,9 @@ export default {
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
         var vpt = this.canvas.viewportTransform;
-        console.log("dragging");
+        this.dragging = true;
+        this.showObjectMenu = false;
+        this.showBgMenu = false;
         var e = opt.e;
         vpt[4] += e.clientX - this.canvas.lastPosX;
         vpt[5] += e.clientY - this.canvas.lastPosY;
@@ -495,8 +589,8 @@ export default {
       this.mouse.x = pointer.x.toFixed();
       this.mouse.y = pointer.y.toFixed();
     });
-    var toolTip = new fabric.Text(this.toolTip, {
-      fontSize: 15,
+    this.toolTip = new fabric.Text(this.toolTipText, {
+      fontSize: 17,
       originX: "center",
       originY: "center",
       fill: "white",
@@ -504,12 +598,15 @@ export default {
       opacity: 0.6,
       visible: false,
     });
-    this.canvas.add(toolTip);
+    this.canvas.add(this.toolTip);
     this.canvas.renderAll();
     this.canvas.on("mouse:up", (opt) => {
       if (this.drawing) {
         console.log("stop drawing");
         this.drawing = false;
+      }
+      if (opt.e.button === 2 && !this.dragging && !this.drawMode) {
+        this.getMenu(opt);
       }
       if (opt.target) {
         const selection = opt.target;
@@ -530,6 +627,7 @@ export default {
       // for all objects, so we call setViewportTransform
       this.canvas.setViewportTransform(this.canvas.viewportTransform);
       this.canvas.isDragging = false;
+      this.dragging = false;
       this.canvas.selection = true;
       if (this.addMarker) {
         this.createMarker(opt);
@@ -543,6 +641,9 @@ export default {
       var zoom = this.canvas.getZoom();
       zoom *= 0.999 ** delta;
       this.zoom = zoom.toFixed(2);
+      let fontSize = this.toolTip.fontSize;
+      console.log(zoom, fontSize);
+      this.toolTip.fontSize = Math.round(17 / zoom);
       if (zoom > 20) zoom = 20;
       if (zoom < 0.1) zoom = 0.1;
       this.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
@@ -662,7 +763,7 @@ export default {
         "notes",
         "marker",
       ]);
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.renderAll();
@@ -675,27 +776,27 @@ export default {
     this.canvas.on("selection:updated", () => {
       console.log("object selection updated");
       this.objectSelected = true;
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.requestRenderAll();
     });
     this.canvas.on("object:moving", () => {
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.requestRenderAll();
       this.changing = true;
     });
     this.canvas.on("object:rotating", () => {
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.requestRenderAll();
       this.changing = true;
     });
     this.canvas.on("object:scaling", () => {
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.requestRenderAll();
@@ -706,7 +807,7 @@ export default {
       var topOffset =
         e.target.top - (e.target.height * e.target.scaleY) / 2 - 20;
       if (e.target.name) {
-        toolTip.set({
+        this.toolTip.set({
           text: e.target.name,
           visible: true,
           left: e.target.left,
@@ -724,7 +825,7 @@ export default {
       this.canvas.renderAll();
     });
     this.canvas.on("mouse:out", (e) => {
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.renderAll();
@@ -737,7 +838,7 @@ export default {
           scaleY: e.target.scaleY / 1.1,
         });
       }
-      toolTip.set({
+      this.toolTip.set({
         visible: false,
       });
       this.canvas.renderAll();

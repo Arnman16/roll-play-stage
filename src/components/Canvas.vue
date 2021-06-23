@@ -267,6 +267,7 @@ export default {
     minimap: {},
     changing: false,
     drawingMode: "add",
+    showAllNamesFlag: false,
     pencilWidth: 25,
     fillColor: "rgba(255,0,0,.5)",
     fab: false,
@@ -384,8 +385,28 @@ export default {
     },
     showAllNames() {
       let objects = this.canvas._objects;
-      objects.forEach((object) => {
-        object.showToolTip = true;
+      this.showAllNamesFlag = true;
+      objects.forEach((target) => {
+        if (target.name) {
+          var vpt = this.canvas.viewportTransform;
+          var headerHeight = this.$store.getters.headerHeight;
+          var offsetY = (target.height * target.scaleY * vpt[0]) / 2;
+          target.set({
+            showToolTip: true,
+            toolTipX: target.left * vpt[0] + vpt[4],
+            toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
+          });
+        }
+      });
+    },
+    hideAllNames() {
+      let objects = this.canvas._objects;
+      objects.forEach((target) => {
+        if (target.name) {
+          target.set({
+            showToolTip: false,
+          });
+        }
       });
     },
     getMenu(opt) {
@@ -656,6 +677,10 @@ export default {
     });
     this.canvas.on("mouse:down", (opt) => {
       var evt = opt.e;
+      if (this.showAllNamesFlag) {
+        this.hideAllNames();
+        this.showAllNamesFlag = false;
+      }
       if (this.drawMode) {
         this.drawing = true;
         console.log("start drawing");
@@ -729,6 +754,10 @@ export default {
 
     // ---------- SCROLL ZOOM ----------
     this.canvas.on("mouse:wheel", (opt) => {
+      if (this.showAllNamesFlag) {
+        this.hideAllNames();
+        this.showAllNamesFlag = false;
+      }
       var delta = opt.e.deltaY;
       var zoom = this.canvas.getZoom();
       zoom *= 0.999 ** delta;

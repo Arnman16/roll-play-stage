@@ -27,7 +27,7 @@
           style="position: absolute; bottom: -20px; left: 10px"
         >
           <template v-slot:activator>
-            <v-btn v-model="fab" color="blue darken-2" dark fab>
+            <v-btn v-model="fab" :color="colorPickerColor" dark fab>
               <v-icon v-if="fab">
                 mdi-close
               </v-icon>
@@ -66,10 +66,11 @@
           <v-btn
             fab
             :color="colorPickerColor"
-            v-show="drawMode"
             small
             @click="colorPickerDialog = true"
-          ></v-btn>
+          >
+            <v-icon> mdi-palette</v-icon></v-btn
+          >
         </v-speed-dial>
       </div>
       <!-- <v-container class="ma-0 pa-0">
@@ -212,6 +213,19 @@
         </v-list-item>
       </v-list>
     </v-menu>
+    <v-tooltip
+      v-for="(item, index) in canvas._objects"
+      :key="index"
+      v-model="item.showToolTip"
+      :position-x="item.toolTipX"
+      :position-y="item.toolTipY"
+      top
+      absolute
+      :color="item.marker ? item.fill : 'black'"
+      content-class="tooltips"
+    >
+      <span> {{ item.name }}</span>
+    </v-tooltip>
   </div>
 </template>
 
@@ -225,15 +239,21 @@ export default {
     addMarker: false,
     drawMode: false,
     eraseMode: false,
+    showToolTip: false,
     colorPickerDialog: false,
-    colorPickerColor: "rgba(0,0,0,1)",
+    colorPickerColor: "#41A0E1",
     strokeWidth: 1,
     drawing: false,
     erasing: false,
     dragging: false,
-    toolTip: {},
-    toolTipText: "Tool Tip",
-    markerColor: null,
+    headerHeight: 0,
+    toolTip: {
+      x: 0,
+      y: 0,
+      text: "",
+    },
+    toolTipText: "",
+    markerColor: "green",
     mouse: {
       x: 0,
       y: 0,
@@ -265,6 +285,7 @@ export default {
       { title: "Add Marker", action: "addmarker" },
       { title: "Add Light Source", action: "addlightsource" },
       { title: "Change Background", action: "changebackground" },
+      { title: "Show All Names", action: "showallnames" },
     ],
     clickData: {},
   }),
@@ -287,6 +308,14 @@ export default {
       },
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
+      },
+    },
+    editTokenDialog: {
+      get() {
+        return this.$store.getters.editTokenDialog;
+      },
+      set(val) {
+        return this.$store.dispatch("setEditTokenDialog", val);
       },
     },
     backgrounds: {
@@ -324,7 +353,6 @@ export default {
     fireMenuTest(action) {
       console.log(action, " clicked");
       if (action === "lock") {
-        // console.log(this.clickData);
         let target = this.clickData.target;
         target.selectable = !target.selectable;
         var token = this.tokenRef.child(target.__id);
@@ -338,6 +366,27 @@ export default {
         };
         token.update(updates);
       }
+      if (action === "edit") {
+        this.editTokenDialog = true;
+      }
+      if (action === "delete") {
+        this.removeToken();
+      }
+      if (action === "addlightsource") {
+        this.createLightSource();
+      }
+      if (action === "addmarker") {
+        this.createMarker(this.clickData);
+      }
+      if (action === "showallnames") {
+        this.showAllNames();
+      }
+    },
+    showAllNames() {
+      let objects = this.canvas._objects;
+      objects.forEach((object) => {
+        object.showToolTip = true;
+      });
     },
     getMenu(opt) {
       this.clickData = opt;
@@ -370,8 +419,23 @@ export default {
         this.markerColor = "orange";
       }
     },
+    colorAdjust(color, amount) {
+      return (
+        "#" +
+        color
+          .replace(/^#/, "")
+          .replace(/../g, (color) =>
+            (
+              "0" +
+              Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(
+                16
+              )
+            ).substr(-2)
+          )
+      );
+    },
     createMarker(e) {
-      const pointer = this.canvas.getPointer();
+      // const pointer = this.canvas.getPointer();
       console.log(e);
       var shadow = new fabric.Shadow({
         color: "black",
@@ -384,16 +448,16 @@ export default {
       const marker = {
         originX: "center",
         originY: "center",
-        top: pointer.y - 12,
-        left: pointer.x,
+        top: Number(this.mouse.y - 12),
+        left: Number(this.mouse.x),
         width: 25,
         angle: 180,
         height: 25,
-        fill: this.markerColor,
-        stroke: "rgba(0,0,0,0.6)",
+        fill: this.colorPickerColor,
+        stroke: "rgba(0,0,0,0.2)",
         strokeWidth: 3,
         shadow: shadow,
-        opacity: 0.8,
+        opacity: 0.7,
         deletable: true,
         selectable: true,
         evented: true,
@@ -402,6 +466,31 @@ export default {
       };
       console.log("createMarker()");
       this.markerRef.push(marker);
+    },
+    createLightSource() {
+      let cir = new fabric.Circle({
+        left: Number(this.mouse.x),
+        top: Number(this.mouse.y),
+        radius: 30,
+        fill: "rgba(0, 0, 0, 1)",
+      });
+      console.log(cir);
+      // cir.setGradient("fill", {
+      //   type: "radial",
+      //   r1: 30,
+      //   r2: 2,
+      //   x1: 30,
+      //   y1: 30,
+      //   x2: 30,
+      //   y2: 30,
+      //   colorStops: {
+      //     1: "rgb(113,182,203)",
+      //     0: "rgba(0, 0, 0, 0)",
+      //   },
+      // });
+      cir.setCoords();
+      this.canvas.add(cir);
+      this.canvas.renderAll();
     },
     testMethod() {
       // var text = new fabric.Textbox("Text", {
@@ -423,8 +512,13 @@ export default {
       this.zoom = this.canvas.getZoom().toFixed(2);
     },
     removeToken() {
-      const selection = this.canvas.getActiveObject();
-      if (!selection) return;
+      let selection = this.canvas.getActiveObject();
+      if (!selection) {
+        if (!this.selected) return;
+        else {
+          selection = this.selected;
+        }
+      }
       let selectedTokens = [];
       if (selection.type == "activeSelection") {
         selectedTokens = selection._objects;
@@ -515,6 +609,7 @@ export default {
   mounted() {
     const ref = this.$refs.can;
     const mini = this.$refs.mini;
+    this.headerHeight = this.$refs.appBar;
     this.canvas = new fabric.Canvas(ref, {
       fireRightClick: true, // <-- enable firing of right click events
       fireMiddleClick: true, // <-- enable firing of middle click events
@@ -541,6 +636,7 @@ export default {
       this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     });
     window.addEventListener("keyup", (e) => {
+      if (this.editTokenDialog) return;
       if (e.key == "Escape") {
         this.canvas.discardActiveObject();
         this.canvas.requestRenderAll();
@@ -575,6 +671,11 @@ export default {
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
         var vpt = this.canvas.viewportTransform;
+        if (opt.target) {
+          opt.target.set({
+            showToolTip: false,
+          });
+        }
         this.dragging = true;
         this.showObjectMenu = false;
         this.showBgMenu = false;
@@ -589,23 +690,14 @@ export default {
       this.mouse.x = pointer.x.toFixed();
       this.mouse.y = pointer.y.toFixed();
     });
-    this.toolTip = new fabric.Text(this.toolTipText, {
-      fontSize: 17,
-      originX: "center",
-      originY: "center",
-      fill: "white",
-      backgroundColor: "black",
-      opacity: 0.6,
-      visible: false,
-    });
-    this.canvas.add(this.toolTip);
-    this.canvas.renderAll();
     this.canvas.on("mouse:up", (opt) => {
       if (this.drawing) {
         console.log("stop drawing");
         this.drawing = false;
       }
       if (opt.e.button === 2 && !this.dragging && !this.drawMode) {
+        this.canvas.isDragging = false;
+        this.dragging = false;
         this.getMenu(opt);
       }
       if (opt.target) {
@@ -641,11 +733,21 @@ export default {
       var zoom = this.canvas.getZoom();
       zoom *= 0.999 ** delta;
       this.zoom = zoom.toFixed(2);
-      let fontSize = this.toolTip.fontSize;
-      console.log(zoom, fontSize);
-      this.toolTip.fontSize = Math.round(17 / zoom);
       if (zoom > 20) zoom = 20;
       if (zoom < 0.1) zoom = 0.1;
+      if (opt.target) {
+        if (opt.target.name) {
+          var target = opt.target;
+          var vpt = this.canvas.viewportTransform;
+          var headerHeight = this.$store.getters.headerHeight;
+          var offsetY = (opt.target.height * opt.target.scaleY * vpt[0]) / 2;
+          opt.target.set({
+            showToolTip: true,
+            toolTipX: target.left * vpt[0] + vpt[4],
+            toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
+          });
+        }
+      }
       this.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
       opt.e.preventDefault();
       opt.e.stopPropagation();
@@ -683,7 +785,7 @@ export default {
         this.canvas.add(img);
         var shadow = new fabric.Shadow({
           color: "black",
-          blur: 50,
+          blur: 28,
           offsetX: 5,
           offsetY: 5,
           opacity: 0.5,
@@ -703,6 +805,9 @@ export default {
           race: data.race,
           marker: false,
           notes: data.notes,
+          showToolTip: false,
+          toolTipX: 0,
+          toolTipY: 0,
           originX: "center",
           originY: "center",
         });
@@ -713,6 +818,13 @@ export default {
       console.log("Marker_ADDED", snapshot.val());
       const data = snapshot.val();
       var triangle = new fabric.Triangle(data);
+      var shadow = new fabric.Shadow({
+        color: this.colorAdjust(data.fill, -130),
+        blur: 15,
+        offsetX: 0,
+        offsetY: 17,
+        opacity: 0.1,
+      });
       triangle.set({
         __id: snapshot.key,
         marker: true,
@@ -721,6 +833,7 @@ export default {
         selectable: data.selectable,
         evented: data.evented,
         notes: data.notes,
+        shadow: shadow,
       });
       // this.canvas.add(triangle).setActiveObject(triangle);
       this.canvas.add(triangle);
@@ -740,6 +853,7 @@ export default {
         notes: data.notes,
       });
       this.canvas.add(path);
+      this.canvas.moveTo(path, -1);
     });
     this.canvas.on("selection:created", (e) => {
       console.log("object selected");
@@ -749,8 +863,9 @@ export default {
       if (selection.type == "activeSelection") return;
       if (e.target.type !== "path") {
         e.target.set({
-          scaleX: e.target.scaleX / 1.1,
-          scaleY: e.target.scaleY / 1.1,
+          scaleX: e.target.scaleX / 1.05,
+          scaleY: e.target.scaleY / 1.05,
+          showToolTip: false,
         });
       }
       this.selected = selection.toJSON([
@@ -763,10 +878,7 @@ export default {
         "notes",
         "marker",
       ]);
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.renderAll();
+      this.showToolTip = false;
     });
     this.canvas.on("selection:cleared", () => {
       console.log("object deselected");
@@ -776,71 +888,62 @@ export default {
     this.canvas.on("selection:updated", () => {
       console.log("object selection updated");
       this.objectSelected = true;
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.requestRenderAll();
+      this.showToolTip = false;
     });
     this.canvas.on("object:moving", () => {
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.requestRenderAll();
+      this.showToolTip = false;
       this.changing = true;
     });
     this.canvas.on("object:rotating", () => {
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.requestRenderAll();
+      this.showToolTip = false;
       this.changing = true;
     });
     this.canvas.on("object:scaling", () => {
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.requestRenderAll();
+      this.showToolTip = false;
       this.changing = true;
     });
     this.canvas.on("mouse:over", (e) => {
       if (e.target == null) return;
-      var topOffset =
-        e.target.top - (e.target.height * e.target.scaleY) / 2 - 20;
-      if (e.target.name) {
-        this.toolTip.set({
-          text: e.target.name,
-          visible: true,
-          left: e.target.left,
-          top: topOffset,
-        });
+      if (this.objectSelected) {
+        if (e.target.__id === this.selected.__id) return;
+        if (e.target.type == "activeSelection") return;
       }
-      if (this.objectSelected) return;
       if (this.canvas.isDragging) return;
       if (e.target.type !== "path") {
         e.target.set({
-          scaleX: e.target.scaleX * 1.1,
-          scaleY: e.target.scaleY * 1.1,
+          scaleX: e.target.scaleX * 1.05,
+          scaleY: e.target.scaleY * 1.05,
         });
       }
       this.canvas.renderAll();
+      if (e.target.name) {
+        var target = e.target;
+        var vpt = this.canvas.viewportTransform;
+        var headerHeight = this.$store.getters.headerHeight;
+        var offsetY = (e.target.height * e.target.scaleY * vpt[0]) / 2;
+        e.target.set({
+          showToolTip: true,
+          toolTipX: target.left * vpt[0] + vpt[4],
+          toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
+        });
+      }
     });
     this.canvas.on("mouse:out", (e) => {
-      this.toolTip.set({
-        visible: false,
-      });
-      this.canvas.renderAll();
       if (e.target == null) return;
-      if (this.objectSelected) return;
+      e.target.set({
+        showToolTip: false,
+      });
+      if (this.objectSelected) {
+        if (e.target.__id === this.selected.__id) return;
+        if (e.target.type == "activeSelection") return;
+      }
       if (this.canvas.isDragging) return;
       if (e.target.type !== "path") {
         e.target.set({
-          scaleX: e.target.scaleX / 1.1,
-          scaleY: e.target.scaleY / 1.1,
+          scaleX: e.target.scaleX / 1.05,
+          scaleY: e.target.scaleY / 1.05,
         });
       }
-      this.toolTip.set({
-        visible: false,
-      });
       this.canvas.renderAll();
     });
     this.canvas.on("path:created", (e) => {
@@ -1060,5 +1163,11 @@ export default {
   top: 20px;
   left: 20px;
   background-color: red;
+}
+.tooltips {
+  margin: 0 auto;
+  text-align: center;
+  vertical-align: middle;
+  font: caption;
 }
 </style>

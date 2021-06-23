@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar dense app color="dark" dark clipped-right>
+    <v-app-bar dense app color="dark" dark clipped-right ref="appBar">
       <div class="d-flex align-center">
         Roll Play Stage
       </div>
@@ -31,7 +31,12 @@ export default {
 
   data: () => ({
     drawer: false,
+    headerHeight: {}
   }),
+  mounted() {
+    this.headerHeight = this.$refs.appBar.computedOriginalHeight;
+    this.$store.dispatch("setHeaderHeight", this.headerHeight );
+  },
 };
 </script>
 

@@ -131,7 +131,6 @@ export default {
   data() {
     return {
       selectionToggle: false,
-      editTokenDialog: false,
       gcoSelect: { value: 'source-over', description: 'Default. Displays the source image over the destination image' },
         gcoItems: [
           { value: 'source-over', description: 'Default. Displays the source image over the destination image' },
@@ -147,6 +146,14 @@ export default {
       },
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
+      },
+    },
+    editTokenDialog: {
+      get() {
+        return this.$store.getters.editTokenDialog;
+      },
+      set(val) {
+        return this.$store.dispatch("setEditTokenDialog", val);
       },
     },
     backgrounds: {

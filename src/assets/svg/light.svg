@@ -1,0 +1,11 @@
+<svg viewBox="0 0 100 100">
+    <defs>
+        <radialGradient id="myGradient">
+            <stop offset="50%" stop-color="rgba(0,0,0,1)" />
+            <stop offset="90%" stop-color="rgba(0,0,0,0)" />
+        </radialGradient>
+    </defs>
+
+    <!-- using my radial gradient -->
+    <circle cx="5" cy="5" r="4" fill="url('#myGradient')" />
+</svg>

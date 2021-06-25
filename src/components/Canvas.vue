@@ -232,6 +232,7 @@
 <script>
 import db from "../db";
 import { fabric } from "fabric";
+const lightSVG = require("../assets/svg/light.svg");
 export default {
   name: "Canvas",
   data: () => ({
@@ -274,6 +275,8 @@ export default {
     tabs: null,
     showObjectMenu: false,
     showBgMenu: false,
+    lightSVG: lightSVG,
+    lightGroup: null,
     menuX: 0,
     menuY: 0,
     objectMenuItems: [
@@ -489,29 +492,42 @@ export default {
       this.markerRef.push(marker);
     },
     createLightSource() {
-      let cir = new fabric.Circle({
-        left: Number(this.mouse.x),
-        top: Number(this.mouse.y),
-        radius: 30,
-        fill: "rgba(0, 0, 0, 1)",
+      console.log('light function')
+      fabric.loadSVGFromURL(this.lightSVG, (objects, options) => {
+        var obj = fabric.util.groupSVGElements(objects, options);
+        this.canvas.getHeight();
+        obj.set({
+          originX: "center",
+          originY: "center",
+          left: Number(this.mouse.x),
+          top: Number(this.mouse.y),
+          radius: (this.canvas.getHeight() / this.canvas.getZoom()) * 0.5,
+          deletable: false,
+        });
+        this.lightRef.push(obj.toJSON());
       });
-      console.log(cir);
-      // cir.setGradient("fill", {
-      //   type: "radial",
-      //   r1: 30,
-      //   r2: 2,
-      //   x1: 30,
-      //   y1: 30,
-      //   x2: 30,
-      //   y2: 30,
-      //   colorStops: {
-      //     1: "rgb(113,182,203)",
-      //     0: "rgba(0, 0, 0, 0)",
-      //   },
-      // });
-      cir.setCoords();
-      this.canvas.add(cir);
-      this.canvas.renderAll();
+    },
+    editLightMode() {
+      console.log("light mode", this.lightGroup.evented);
+      if (!this.lightGroup.evented) {
+        this.lightGroup.set({
+          evented: true,
+          selectable: true,
+          globalCompositeOperation: "xor",
+          opacity: 0.8,
+          deletable: true,
+        });
+        this.canvas.renderAll();
+      } else {
+        this.lightGroup.set({
+          evented: false,
+          selectable: false,
+          globalCompositeOperation: "destination-in",
+          opacity: 1,
+          deletable: false,
+        });
+        this.canvas.renderAll();
+      }
     },
     testMethod() {
       // var text = new fabric.Textbox("Text", {
@@ -544,6 +560,7 @@ export default {
       if (selection.type == "activeSelection") {
         selectedTokens = selection._objects;
       } else selectedTokens.push(selection);
+      let discardSelection = true;
       selectedTokens.forEach((token) => {
         if (token.deletable) {
           if (token.type === "path") {
@@ -552,17 +569,26 @@ export default {
           } else if (token.marker) {
             const markerFB = this.markerRef.child(token.__id);
             markerFB.remove();
-          } else {
+          } else if (token.type === "img") {
             const tokenFB = this.tokenRef.child(token.__id);
             tokenFB.remove();
+          } else if (token.type === "group") {
+            if (token._objects.length > 5) discardSelection = false;
+            else discardSelection = true;
+            let lastLight = token._objects[token._objects.length - 1];
+            const lightFB = this.lightRef.child(lastLight.__id);
+            console.log("light removed");
+            lightFB.remove();
           }
         }
       });
-      this.canvas.discardActiveObject();
-      this.canvas.requestRenderAll();
+      if (discardSelection) this.canvas.discardActiveObject();
     },
     getTokenFromId(id) {
       return this.canvas.getObjects().filter((obj) => obj.__id === id)[0];
+    },
+    getLightFromId(id) {
+      return this.lightGroup.getObjects().filter((obj) => obj.__id === id)[0];
     },
     addTokenDrag(e) {
       if (this.bgDrag) {
@@ -650,6 +676,7 @@ export default {
     this.markerRef = db.database().ref("markers");
     this.sessionRef = db.database().ref("session");
     this.drawingsRef = db.database().ref("drawings");
+    this.lightRef = db.database().ref("light");
 
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
@@ -674,6 +701,12 @@ export default {
       if (e.key == "a") {
         // select alla
       }
+      if (e.key == "l") {
+        this.createLightSource();
+      }
+      if (e.key == "k") {
+        this.editLightMode();
+      }
     });
     this.canvas.on("mouse:down", (opt) => {
       var evt = opt.e;
@@ -692,6 +725,9 @@ export default {
         this.canvas.lastPosX = evt.clientX;
         this.canvas.lastPosY = evt.clientY;
       }
+    });
+    this.canvas.on("touch:drag", (opt) => {
+      console.log("TOUCH, DRAG", opt);
     });
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
@@ -869,6 +905,114 @@ export default {
       triangle.setCoords();
       this.canvas.renderAll();
     });
+    this.lightRef.on("child_added", (snapshot) => {
+      if (this.lightGroup === null) {
+        var r1 = new fabric.Rect({
+          left: 0,
+          top: 0,
+          width: 10,
+          height: 10,
+          originX: "center",
+          originY: "center",
+          selectable: false,
+          evented: false,
+          boundary: true,
+          __id: "0",
+          // fill: "rgba(255,127,39,1)",
+          stroke: "rgba(34,177,76,1)",
+          strokeWidth: 5,
+        });
+        var r2 = new fabric.Rect({
+          left: 0,
+          top: this.activeBackground.height,
+          width: 10,
+          height: 10,
+          originX: "center",
+          originY: "center",
+          selectable: false,
+          evented: false,
+          boundary: true,
+          __id: "0",
+          // fill: "rgba(255,127,39,1)",
+          stroke: "rgba(34,177,76,1)",
+          strokeWidth: 5,
+        });
+        var r3 = new fabric.Rect({
+          left: this.activeBackground.width,
+          top: 0,
+          width: 10,
+          height: 10,
+          originX: "center",
+          originY: "center",
+          selectable: false,
+          evented: false,
+          boundary: true,
+          __id: "0",
+          // fill: "rgba(255,127,39,1)",
+          stroke: "rgba(34,177,76,1)",
+          strokeWidth: 5,
+        });
+        var r4 = new fabric.Rect({
+          left: this.activeBackground.width,
+          top: this.activeBackground.height,
+          width: 10,
+          height: 10,
+          originX: "center",
+          originY: "center",
+          selectable: false,
+          evented: false,
+          boundary: true,
+          __id: "0",
+          // fill: "rgba(255,127,39,1)",
+          stroke: "rgba(34,177,76,1)",
+          strokeWidth: 5,
+        });
+        console.log("light group created");
+        this.lightGroup = new fabric.Group([r1, r2, r3, r4], {
+          originX: "center",
+          originY: "center",
+          evented: false,
+          selectable: false,
+          globalCompositeOperation: "destination-in",
+        });
+        this.canvas.add(this.lightGroup);
+      }
+      let light = new fabric.Circle(snapshot.val()).set({
+        __id: snapshot.key,
+        boundary: false,
+      });
+      this.lightGroup.addWithUpdate(light);
+
+      // this.lightGroup.setCoords();
+      this.canvas.moveTo(this.lightGroup, -2);
+      this.canvas.renderAll();
+    });
+    this.lightRef.on("child_changed", (snapshot) => {
+      console.log(snapshot);
+    });
+    this.lightRef.on("child_removed", (snapshot) => {
+      console.log(snapshot);
+      const key = snapshot.key;
+      let light = this.getLightFromId(key);
+      console.log(light, key, this.canvas._objects);
+      this.lightGroup.remove(light);
+      console.log(this.lightGroup._objects.length);
+      if (this.lightGroup._objects.length === 4) {
+        console.log("lightgroup null");
+        this.canvas.remove(this.lightGroup);
+        this.lightGroup = null;
+      }
+      this.canvas.requestRenderAll();
+    });
+
+    this.sessionRef.on("child_changed", (snapshot) => {
+      this.setBG(snapshot.val().activeBackground.url);
+      this.activeBackground = snapshot.val().activeBackground;
+    });
+    this.sessionRef.on("child_added", (snapshot) => {
+      this.setBG(snapshot.val().activeBackground.url);
+      this.activeBackground = snapshot.val().activeBackground;
+    });
     this.drawingsRef.on("child_added", (snapshot) => {
       console.log("Drawing Added", snapshot.val());
       const data = snapshot.val();
@@ -890,7 +1034,7 @@ export default {
       const selection = this.canvas.getActiveObject();
       if (!selection) return;
       if (selection.type == "activeSelection") return;
-      if (e.target.type !== "path") {
+      if (e.target.type !== "path" && e.target.type !== "circle") {
         e.target.set({
           scaleX: e.target.scaleX / 1.05,
           scaleY: e.target.scaleY / 1.05,
@@ -938,7 +1082,7 @@ export default {
         if (e.target.type == "activeSelection") return;
       }
       if (this.canvas.isDragging) return;
-      if (e.target.type !== "path") {
+      if (e.target.type !== "path" && e.target.type !== "circle") {
         e.target.set({
           scaleX: e.target.scaleX * 1.05,
           scaleY: e.target.scaleY * 1.05,
@@ -967,7 +1111,7 @@ export default {
         if (e.target.type == "activeSelection") return;
       }
       if (this.canvas.isDragging) return;
-      if (e.target.type !== "path") {
+      if (e.target.type !== "path" && e.target.type !== "circle") {
         e.target.set({
           scaleX: e.target.scaleX / 1.05,
           scaleY: e.target.scaleY / 1.05,
@@ -1053,7 +1197,8 @@ export default {
             angle: object.angle,
           };
           marker.update(updates);
-        } else {
+        } else if (object.type === "image") {
+          console.log(object.type);
           const token = this.tokenRef.child(object.__id);
           const updates = {
             top: object.top,

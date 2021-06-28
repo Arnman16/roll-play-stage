@@ -9,11 +9,22 @@
         <canvas ref="can"></canvas>
         <div v-cloak @drop.prevent="bgDrag = true" @dragover.prevent>
           <v-card
-            outlined
+            elevation="15"
             class="minimap"
             style="position: absolute; top: 10px; left: 10px"
           >
-            <canvas ref="mini" width="80" height="80"></canvas>
+            <v-img
+              :src="activeBackground.url"
+              :width="minimap.width"
+              :height="minimap.height"
+            >
+              <v-card
+                color="rgba(255, 255, 255, 0.2)"
+                flat
+                :style="minimapSquare"
+              ></v-card>
+            </v-img>
+            <!-- <canvas ref="mini" width="80" height="80"></canvas> -->
           </v-card>
         </div>
         <v-speed-dial
@@ -28,12 +39,8 @@
         >
           <template v-slot:activator>
             <v-btn v-model="fab" :color="colorPickerColor" dark fab>
-              <v-icon v-if="fab">
-                mdi-close
-              </v-icon>
-              <v-icon v-else>
-                mdi-cog
-              </v-icon>
+              <v-icon v-if="fab"> mdi-close </v-icon>
+              <v-icon v-else> mdi-cog </v-icon>
             </v-btn>
           </template>
           <v-btn fab dark small color="green">
@@ -105,7 +112,7 @@
       </v-container> -->
     </v-container>
     <v-footer
-      style="z-index: 0;"
+      style="z-index: 0"
       height="34"
       color="rgba(0,0,0,0.5)"
       fixed
@@ -122,7 +129,7 @@
         <v-col></v-col>
         <v-col
           class="text-center text-caption pa-1 font-weight-thin my-auto"
-          style="border: 1px solid rgba(255,255,255, 0.2); opacity: 0.3;"
+          style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
           cols="2"
         >
           bg: {{ this.activeBackground.name }} [{{
@@ -132,7 +139,7 @@
         <v-col
           cols="1"
           class="text-center text-caption pa-1 font-weight-thin my-auto"
-          style="border: 1px solid rgba(255,255,255, 0.2); opacity: 0.3;"
+          style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
         >
           {{ mouse.x + ", " + mouse.y + "px" }}
         </v-col>
@@ -161,9 +168,7 @@
           </v-color-picker>
           <v-divider class="my-2"></v-divider>
           <div class="pa-5">
-            <div class="text-caption text-center">
-              Line Size
-            </div>
+            <div class="text-caption text-center">Line Size</div>
             <v-slider
               min="1"
               max="500"
@@ -171,7 +176,7 @@
               thumb-color="grey darken-2"
               thumb-label
               hide-details
-              class="mx-10 "
+              class="mx-10"
               v-model="strokeWidth"
               hint="Line Size"
             ></v-slider>
@@ -226,6 +231,20 @@
     >
       <span> {{ item.name }}</span>
     </v-tooltip>
+    <v-snackbar
+      transition="dialog-transition"
+      text
+      v-model="snackbar.show"
+      timeout="6000"
+    >
+      <v-container class="ma-0 pa-0" fluid fill-height>
+        <v-row justify="space-around" align="center">
+          <v-col class="ma-0 pa-0" align="center">
+            <span class="text--primary">{{ snackbar.message }}</span>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-snackbar>
   </div>
 </template>
 
@@ -241,6 +260,10 @@ export default {
     drawMode: false,
     eraseMode: false,
     showToolTip: false,
+    snackbar: {
+      show: false,
+      message: "",
+    },
     colorPickerDialog: false,
     colorPickerColor: "#41A0E1",
     strokeWidth: 1,
@@ -265,7 +288,18 @@ export default {
     objectSelected: false,
     tokens: {},
     canvas: {},
-    minimap: {},
+    minimap: {
+      height: 100,
+      width: 100,
+    },
+    minimapSquare: {
+      width: "99px",
+      height: "99px",
+      border: "2px solid #111",
+      position: "absolute",
+      top: "0px",
+      left: "0px",
+    },
     changing: false,
     drawingMode: "add",
     showAllNamesFlag: false,
@@ -292,6 +326,8 @@ export default {
       { title: "Show All Names", action: "showallnames" },
     ],
     clickData: {},
+    isTokenAdded: false,
+    tokenAdded: {},
   }),
   computed: {
     activeFab() {
@@ -492,7 +528,7 @@ export default {
       this.markerRef.push(marker);
     },
     createLightSource() {
-      console.log('light function')
+      console.log("light function");
       fabric.loadSVGFromURL(this.lightSVG, (objects, options) => {
         var obj = fabric.util.groupSVGElements(objects, options);
         this.canvas.getHeight();
@@ -556,6 +592,7 @@ export default {
           selection = this.selected;
         }
       }
+      console.log(selection.type);
       let selectedTokens = [];
       if (selection.type == "activeSelection") {
         selectedTokens = selection._objects;
@@ -569,7 +606,7 @@ export default {
           } else if (token.marker) {
             const markerFB = this.markerRef.child(token.__id);
             markerFB.remove();
-          } else if (token.type === "img") {
+          } else if (token.type === "image") {
             const tokenFB = this.tokenRef.child(token.__id);
             tokenFB.remove();
           } else if (token.type === "group") {
@@ -597,25 +634,32 @@ export default {
       }
       const url = e.dataTransfer.getData("Text");
       var img = new Image();
+
       img.addEventListener("load", (ee) => {
-        const width = ee.target.naturalWidth;
-        const height = ee.target.naturalHeight;
-        const name = "token_" + Object.keys(this.tokens).length + "";
+        console.log(ee);
+        // const width = ee.target.naturalWidth;
+        // const height = ee.target.naturalHeight;
+        // const name = "token_" + Object.keys(this.tokens).length + "";
+        const name = "";
         const token = {
           name: name,
           url: url,
-          top: e.clientY - height / 2,
-          left: e.clientX - width / 2,
           angle: 0,
           scaleX: 1,
           scaleY: 1,
+          originX: "center",
+          originY: "center",
           race: "",
           notes: "",
           deletable: true,
           selectable: true,
           evented: true,
         };
-        this.tokenRef.push(token);
+        this.isTokenAdded = true;
+        this.tokenAdded = token;
+        this.snackbar.show = true;
+        this.snackbar.message = "Click where you want to place token";
+        this.canvas.defaultCursor = "crosshair";
       });
       img.src = url;
     },
@@ -655,7 +699,6 @@ export default {
   },
   mounted() {
     const ref = this.$refs.can;
-    const mini = this.$refs.mini;
     this.headerHeight = this.$refs.appBar;
     this.canvas = new fabric.Canvas(ref, {
       fireRightClick: true, // <-- enable firing of right click events
@@ -665,12 +708,6 @@ export default {
     const fullWidth = window.innerWidth;
     const fullHeight = window.innerHeight - 85;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
-    this.minimap = new fabric.Canvas(mini, {
-      // http://fabricjs.com/build-minimap
-      // http://fabricjs.com/build-minimap
-      // http://fabricjs.com/build-minimap
-      selection: false,
-    });
     this.tokenRef = db.database().ref("tokens");
     this.bgRef = db.database().ref("backgrounds");
     this.markerRef = db.database().ref("markers");
@@ -731,6 +768,7 @@ export default {
     });
     this.canvas.on("mouse:move", (opt) => {
       if (this.canvas.isDragging) {
+        console.log("dragging");
         var vpt = this.canvas.viewportTransform;
         if (opt.target) {
           opt.target.set({
@@ -756,10 +794,26 @@ export default {
         console.log("stop drawing");
         this.drawing = false;
       }
+      if (this.isTokenAdded && opt.e.button !== 2) {
+        let mouse = this.canvas.getPointer();
+        this.tokenAdded.top = mouse.y;
+        this.tokenAdded.left = mouse.x;
+        this.tokenRef.push(this.tokenAdded);
+        this.isTokenAdded = false;
+        this.tokenAdded = {};
+        this.snackbar.show = false;
+        this.canvas.defaultCursor = "default";
+      }
       if (opt.e.button === 2 && !this.dragging && !this.drawMode) {
         this.canvas.isDragging = false;
         this.dragging = false;
         this.getMenu(opt);
+        if (this.isTokenAdded) {
+          this.isTokenAdded = false;
+          this.tokenAdded = {};
+          this.snackbar.show = false;
+          this.canvas.defaultCursor = "default";
+        }
       }
       if (opt.target) {
         const selection = opt.target;
@@ -796,14 +850,15 @@ export default {
       }
       var delta = opt.e.deltaY;
       var zoom = this.canvas.getZoom();
+      // const oldZoom = zoom;
       zoom *= 0.999 ** delta;
       this.zoom = zoom.toFixed(2);
+      var vpt = this.canvas.viewportTransform;
       if (zoom > 20) zoom = 20;
       if (zoom < 0.1) zoom = 0.1;
       if (opt.target) {
         if (opt.target.name) {
           var target = opt.target;
-          var vpt = this.canvas.viewportTransform;
           var headerHeight = this.$store.getters.headerHeight;
           var offsetY = (opt.target.height * opt.target.scaleY * vpt[0]) / 2;
           opt.target.set({
@@ -814,6 +869,27 @@ export default {
         }
       }
       this.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+      vpt = this.canvas.viewportTransform;
+      let miniHeight =
+        (this.canvas.height / zoom / this.activeBackground.height) *
+        this.minimap.height;
+      let miniWidth =
+        (this.canvas.width / zoom / this.activeBackground.width) *
+        this.minimap.width;
+      let miniLeft =
+        (-(vpt[4] / this.activeBackground.width) * this.minimap.width) / zoom;
+      let miniTop =
+        (-(vpt[5] / this.activeBackground.height) * this.minimap.height) / zoom;
+      if (miniLeft < 0) miniLeft = 0;
+      if (miniLeft > this.minimap.width) miniLeft = this.minimap.width;
+      if (miniTop < 0) miniTop = 0;
+      if (miniTop > this.minimap.height) miniTop = this.minimap.height;
+
+      console.log(miniLeft);
+      this.minimapSquare.height = miniHeight + "px";
+      this.minimapSquare.width = miniWidth + "px";
+      this.minimapSquare.left = miniLeft + "px";
+      this.minimapSquare.top = miniTop + "px";
       opt.e.preventDefault();
       opt.e.stopPropagation();
     });

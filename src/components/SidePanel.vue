@@ -93,18 +93,18 @@
               v-model="selected.selectable"
             ></v-checkbox>
             <v-checkbox label="Evented" v-model="selected.evented"></v-checkbox>
-          <v-select
-          v-model="gcoSelect"
-          v-if="selected.type==='path'"
-          :hint="gcoSelect.description"
-          :items="gcoItems"
-          item-text="value"
-          item-value="value"
-          label="global Composite Operation"
-          persistent-hint
-          return-object
-          single-line
-        ></v-select>
+            <v-select
+              v-model="gcoSelect"
+              v-if="selected.type === 'path'"
+              :hint="gcoSelect.description"
+              :items="gcoItems"
+              item-text="value"
+              item-value="value"
+              label="global Composite Operation"
+              persistent-hint
+              return-object
+              single-line
+            ></v-select>
           </v-container>
           <!-- <small>*indicates required field</small> -->
         </v-card-text>
@@ -120,26 +120,45 @@
   </div>
 </template>
 <script>
-import db from "../db";
+import { db } from "../db";
 export default {
   name: "SidePanel",
   watch: {
     gcoSelect(val) {
       this.selected.globalCompositeOperation = val.value;
-    }
+    },
   },
   data() {
     return {
       selectionToggle: false,
-      gcoSelect: { value: 'source-over', description: 'Default. Displays the source image over the destination image' },
-        gcoItems: [
-          { value: 'source-over', description: 'Default. Displays the source image over the destination image' },
-          { value: 'destination-in', description: 'Displays the destination image in to the source image. Only the part of the destination image that is INSIDE the source image is shown, and the source image is transparent' },
-          { value: 'destination-out', description: 'Displays the destination image out of the source image. Only the part of the destination image that is OUTSIDE the source image is shown, and the source image is transparent' },
-        ],
+      gcoSelect: {
+        value: "source-over",
+        description:
+          "Default. Displays the source image over the destination image",
+      },
+      gcoItems: [
+        {
+          value: "source-over",
+          description:
+            "Default. Displays the source image over the destination image",
+        },
+        {
+          value: "destination-in",
+          description:
+            "Displays the destination image in to the source image. Only the part of the destination image that is INSIDE the source image is shown, and the source image is transparent",
+        },
+        {
+          value: "destination-out",
+          description:
+            "Displays the destination image out of the source image. Only the part of the destination image that is OUTSIDE the source image is shown, and the source image is transparent",
+        },
+      ],
     };
   },
   computed: {
+    stage() {
+      return this.$store.getters.stage;
+    },
     selected: {
       get() {
         return this.$store.state.selected;
@@ -178,24 +197,34 @@ export default {
   },
   methods: {
     saveToken() {
+      const slug = "stage/" + this.stage.slug + "/backgrounds/" + this.activeBackground.__id; 
       if (this.selected.type === "path") {
-        const drawingRef = db.database().ref("drawings");
+        const drawingRef = db.database().ref(slug + "/drawings");
         const drawing = drawingRef.child(this.selected.__id);
         drawing.update(this.selected);
       } else if (this.selected.marker === true) {
-        const markerRef = db.database().ref("markers");
+        const markerRef = db.database().ref(slug + "/markers");
         const marker = markerRef.child(this.selected.__id);
         marker.update(this.selected);
       } else {
-        const tokenRef = db.database().ref("tokens");
+        const tokenRef = db.database().ref(slug + "/tokens");
         const token = tokenRef.child(this.selected.__id);
-        token.update(this.selected);
+        const update = {
+          name: this.selected.name,
+          race: this.selected.race,
+          notes: this.selected.notes,
+          evented: this.selected.evented,
+          deletable: this.selected.deletable,
+          selectable: this.selected.selectable,
+        }
+        token.update(update);
       }
       this.editTokenDialog = false;
     },
     setActiveBg(background) {
-      let sessionRef = db.database().ref("session");
-      sessionRef.child(1).update({
+      const slug = "stage/" + this.stage.slug;
+      this.sessionRef = db.database().ref(slug + "/session");
+      this.sessionRef.child(1).update({
         activeBackground: background,
       });
       this.activeBackground = background;

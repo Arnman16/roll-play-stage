@@ -106,6 +106,7 @@
           }}] : {{ this.zoom }}x
         </v-col>
         <v-col
+          @click="testFunction"
           cols="2"
           class="text-center text-caption pa-1 font-weight-thin my-auto"
           style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
@@ -220,7 +221,6 @@
 <script>
 import { db } from "../db";
 import { fabric } from "fabric";
-import firebase from "firebase";
 import _ from "lodash";
 
 const lightSVG = require("../assets/svg/light.svg");
@@ -349,6 +349,16 @@ export default {
     stage() {
       return this.$store.getters.stage;
     },
+    slug() {
+      return this.$route.params.slug;
+    },
+    user() {
+      return this.$store.getters.user;
+    },
+    isOwner() {
+      if (!this.user) return null;
+      return this.user.uid === this.stage.uid;
+    },
   },
   watch: {
     drawMode(val) {
@@ -364,35 +374,18 @@ export default {
       this.canvas.freeDrawingBrush.width = width;
     },
     activeBackground() {
-      console.log("change bg");
+      console.log("activeBackground");
       this.detachListeners();
       this.attachListeners();
     },
+    stage(val) {
+      console.log("stage change");
+      if (val) {
+        this.reloadSession();
+      }
+    },
   },
   methods: {
-    googleSignIn() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      firebase
-        .auth()
-        .signInWithPopup(provider)
-        .then((result) => {
-          /** @type {firebase.auth.OAuthCredential} */
-          var credential = result.credential;
-
-          // This gives you a Google Access Token. You can use it to access the Google API.
-          var token = credential.accessToken;
-          // The signed-in user info.
-          var user = result.user;
-          var uid = user.uid;
-          // ...
-          console.log("token: ", token);
-          console.log("user: ", user);
-          console.log("uid: ", uid);
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-    },
     fireMenuTest(action) {
       console.log(action, " clicked");
       if (action === "lock") {
@@ -794,20 +787,6 @@ export default {
         });
         this.tokens = tokens;
       });
-      this.bgRef.on("value", (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-        let backgrounds = [];
-        Object.keys(data).forEach((key) => {
-          let bgObject = { ...data[key] };
-          bgObject.__id = key;
-          backgrounds.push(bgObject);
-        });
-        this.backgrounds = backgrounds;
-        if (!this.activeBackground) {
-          this.activeBackground = backgrounds[this.backgrounds.length - 1];
-        }
-      });
       this.tokenRef.on("child_added", (snapshot) => {
         // console.log("CHILD_ADDED", snapshot.val().url);
         const data = snapshot.val();
@@ -823,14 +802,14 @@ export default {
           });
           img.set({
             stage: data.slug,
-            owner: data.uid,
+            owner: data.owner,
             __id: snapshot.key,
             top: data.top,
             left: data.left,
             scaleX: data.scaleX,
             scaleY: data.scaleY,
             deletable: data.deletable,
-            selectable: data.selectable,
+            selectable: this.isOwner && data.selectable,
             evented: data.evented,
             angle: data.angle,
             shadow: shadow,
@@ -865,7 +844,7 @@ export default {
           marker: true,
           name: data.name,
           deletable: data.deletable,
-          selectable: data.selectable,
+          selectable: this.isOwner && data.selectable,
           evented: data.evented,
           notes: data.notes,
           shadow: shadow,
@@ -991,7 +970,7 @@ export default {
           owner: data.owner,
           __id: snapshot.key,
           deletable: data.deletable,
-          selectable: data.selectable,
+          selectable: this.isOwner && data.selectable,
           evented: data.evented,
           name: data.name,
           notes: data.notes,
@@ -1031,7 +1010,7 @@ export default {
               race: data.race,
               notes: data.notes,
               deletable: data.deletable,
-              selectable: data.selectable,
+              selectable: this.isOwner && data.selectable,
               evented: data.evented,
             });
             this.canvas.renderAll();
@@ -1062,7 +1041,7 @@ export default {
               scaleX: data.scaleX,
               scaleY: data.scaleY,
               deletable: data.deletable,
-              selectable: data.selectable,
+              selectable: this.isOwner && data.selectable,
               evented: data.evented,
               angle: data.angle,
               name: data.name,
@@ -1088,7 +1067,7 @@ export default {
               scaleX: data.scaleX,
               scaleY: data.scaleY,
               deletable: data.deletable,
-              selectable: data.selectable,
+              selectable: this.isOwner && data.selectable,
               evented: data.evented,
               globalCompositeOperation: data.globalCompositeOperation,
               angle: data.angle,
@@ -1103,6 +1082,42 @@ export default {
         }
       });
     },
+    reloadSession() {
+      if (this.sessionRef) this.sessionRef.off();
+      if (this.bgRef) this.bgRef.off();
+      const slug = "stage/" + this.stage.slug;
+      this.sessionRef = db.database().ref(slug + "/session");
+      this.bgRef = db.database().ref(slug + "/backgrounds");
+      this.bgRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+        let backgrounds = [];
+        Object.keys(data).forEach((key) => {
+          let bgObject = { ...data[key] };
+          bgObject.__id = key;
+          backgrounds.push(bgObject);
+        });
+        this.backgrounds = backgrounds;
+      });
+      this.sessionRef
+        .child(1)
+        .get()
+        .then((result) => {
+          this.activeBackground = result.val().activeBackground;
+          this.setBG(this.activeBackground.url);
+          // this.attachListeners();
+        });
+      this.sessionRef.on("child_changed", (snapshot) => {
+        console.log("sessionRef child_changed");
+        this.setBG(snapshot.val().activeBackground.url);
+        this.activeBackground = snapshot.val().activeBackground;
+      });
+      // this.sessionRef.on("child_added", (snapshot) => {
+      //   console.log("sessionRef child_added");
+      //   this.setBG(snapshot.val().activeBackground.url);
+      //   this.activeBackground = snapshot.val().activeBackground;
+      // });
+    },
   },
   mounted() {
     const ref = this.$refs.can;
@@ -1112,29 +1127,10 @@ export default {
       fireMiddleClick: true, // <-- enable firing of middle click events
       stopContextMenu: true, // <--  prevent context menu from showing
     });
+    this.reloadSession();
     const fullWidth = window.innerWidth;
     const fullHeight = window.innerHeight - 85;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
-    const slug = "stage/" + this.stage.slug;
-    this.bgRef = db.database().ref(slug + "/backgrounds");
-    this.sessionRef = db.database().ref(slug + "/session");
-    this.sessionRef
-      .child(1)
-      .get()
-      .then((result) => {
-        this.activeBackground = result.val().activeBackground;
-        this.attachListeners();
-      });
-    this.sessionRef.on("child_changed", (snapshot) => {
-      this.setBG(snapshot.val().activeBackground.url);
-      this.activeBackground = snapshot.val().activeBackground;
-    });
-    this.sessionRef.on("child_added", (snapshot) => {
-      this.setBG(snapshot.val().activeBackground.url);
-      this.activeBackground = snapshot.val().activeBackground;
-    });
-    // const slug = "stage/" + this.stage.slug;
-
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
       const fullHeight = window.innerHeight - 85;

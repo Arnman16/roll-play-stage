@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import * as fb from "./db";
 import { backupRandomPageName, randomPageName, slugify } from "./assets/words"
+import router from "./router";
 
 Vue.use(Vuex);
 
@@ -26,6 +27,8 @@ export default new Vuex.Store({
     },
     user: null,
     stage: null,
+    activeUsers: [],
+    loading: true,
   },
   getters: {
     selected: (state) => {
@@ -48,7 +51,13 @@ export default new Vuex.Store({
     },
     stage: (state) => {
       return state.stage;
-    }
+    },
+    activeUsers: (state) => {
+      return state.activeUsers;
+    },
+    loading: (state) => {
+      return state.loading;
+    },
   },
   mutations: {
     SET_SELECTED: (state, newSelection) => {
@@ -72,12 +81,22 @@ export default new Vuex.Store({
     SET_STAGE: (state, val) => {
       state.stage = val;
     },
+    SET_ACTIVE_USERS: (state, val) => {
+      state.activeUsers = val;
+    },
+    SET_LOADING(state, isLoading) {
+      state.loading = isLoading;
+    },
     // other mutations
   },
   actions: {
     setSelected: ({ commit, state }, newSelection) => {
       commit("SET_SELECTED", newSelection);
       return state.selected;
+    },
+    setActiveUsers: ({ commit, state }, newUsers) => {
+      commit("SET_ACTIVE_USERS", newUsers);
+      return state.activeUsers;
     },
     setBackgrounds: ({ commit, state }, newBackgrounds) => {
       commit("SET_BACKGROUNDS", newBackgrounds);
@@ -97,27 +116,32 @@ export default new Vuex.Store({
     },
     setUser: ({ commit, state }, val) => {
       commit("SET_USER", val);
+      commit("SET_LOADING", false);
       return state.user;
+    },
+    setStage: ({ commit, state }, val) => {
+      commit("SET_STAGE", val);
+      return state.stage;
     },
     signOut: ({ commit }) => {
       fb.auth.signOut()
         .then(() => {
           commit("SET_USER", null);
+          if (router.currentRoute.path !== "/") router.push("/");
         })
         .catch((error) => {
           console.error(error);
           // An error happened.
         });
     },
-    async fetchUser({ commit }, user) {
+    async authCheck({ dispatch }) {
+      if (fb.auth.currentUser) await dispatch("fetchUser", fb.auth.currentUser);
+      else console.log("oops");
+    },
+    async fetchUser({ commit, dispatch }, user) {
+      commit("SET_LOADING", true);
       console.log('--------------------------\nFETCH USER', user);
       try {
-        // const userData = thisUser.data();
-        // if (userData) {
-        //   userData.isAuthenticated = true;
-        //   userData.uid = user.uid;
-        //   commit("SET_USER", userData);
-        // }
         if (user) {
           user.isAuthenticated = true;
           let thisUser = await fb.usersCollection.doc(user.uid).get();
@@ -138,33 +162,43 @@ export default new Vuex.Store({
               pageName: randomPageName,
               slug: slugify(randomPageName),
             }).then(() => {
-              commit("SET_USER", thisUser.data());
+              dispatch("setUser", thisUser.data());
             });
           }
           else {
-            commit("SET_USER", thisUser.data());
+            dispatch("setUser", thisUser.data());
           }
         }
-        else commit("SET_USER", null);
+        else {
+          console.log('setting user null')
+          dispatch("setUser", null);
+        }
       } catch (error) {
         const errorCode = error.code;
         const errorMessage = error.message;
         const email = error.email;
         const credential = error.credential;
-        commit("SET_USER", null);
+        dispatch("setUser", null);
         console.log(errorCode, errorMessage, email, credential);
       }
     },
-    async fetchStage({ commit }, slug) {
+    async fetchStage({ commit, state, dispatch }, slug) {
+      commit("SET_LOADING", true);
       console.log("fetch stage");
       await fb.usersCollection.where("slug", "==", slug).get()
         .then((result) => {
           if (result.size === 0) {
             console.log('stage not found');
-            commit("SET_STAGE", null);
+            dispatch("setStage", null);
           }
           else {
-            commit("SET_STAGE", result.docs[0].data());
+            const stage = result.docs[0].data()
+            dispatch("setStage", stage);
+            let user = state.user;
+            if (user) {
+              user.viewing = stage.slug;
+              dispatch("setUser", user);
+            }
           }
         })
     },

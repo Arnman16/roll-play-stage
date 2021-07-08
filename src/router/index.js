@@ -24,7 +24,7 @@ const ifNotAuthenticated = (to, from, next) => {
 };
 
 const ifAuthenticated = (to, from, next) => {
-  if (store.getters.user.isAuthenticated) {
+  if (store.getters.user) {
     next();
     return;
   }
@@ -32,11 +32,13 @@ const ifAuthenticated = (to, from, next) => {
   store
     .dispatch("authCheck")
     .then(function () {
-      if (store.getters.user.isAuthenticated) {
+      if (store.getters.user) {
         next();
+        store.commit("SET_LOADING", false);
         return;
       } else {
         next("/login");
+        store.commit("SET_LOADING", false);
       }
     })
     .catch(function (error) {
@@ -64,6 +66,7 @@ const routes = [
     path: "/stages/:slug",
     name: "Stage",
     component: Stage,
+    beforeEnter: ifAuthenticated,
   },
   {
     path: "/login",
@@ -75,7 +78,7 @@ const routes = [
     path: "/signup",
     name: "Signup",
     component: Signup,
-    beforeEnter: ifAuthenticated,
+    beforeEnter: ifNotAuthenticated,
   },
   {
     path: "/*",

@@ -17,6 +17,14 @@ export default {
     user() {
       return this.$store.getters.user;
     },
+    loading: {
+      get() {
+        return this.$store.getters.loading;
+      },
+      set(val) {
+        this.$store.commit("SET_LOADING", val);
+      },
+    },
   },
   watch: {
     user(val) {
@@ -70,6 +78,7 @@ export default {
   mounted() {
     this.firebaseUi = new firebaseui.auth.AuthUI(auth);
     this.loadAuth();
+    this.loading = false;
   },
 };
 </script>

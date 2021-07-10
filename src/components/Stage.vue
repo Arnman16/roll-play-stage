@@ -148,7 +148,8 @@ export default {
 
       this.stageUsersRef.on("child_changed", (snapshot) => {
         const val = snapshot.val();
-        const notMe = snapshot.key !== this.user.uid;
+        let notMe = true;
+        if (this.user) notMe = snapshot.key !== this.user.uid;
         let active = this.activeUsers.filter(
           (item) => item.uid !== snapshot.key
         );
@@ -160,7 +161,8 @@ export default {
       });
       this.stageUsersRef.on("child_added", (snapshot) => {
         const val = snapshot.val();
-        const notMe = snapshot.key !== this.user.uid;
+        let notMe = true;
+        if (this.user) notMe = snapshot.key !== this.user.uid;
         let active = this.activeUsers.filter(
           (item) => item.uid !== snapshot.key
         );
@@ -178,17 +180,20 @@ export default {
     },
     setOffline() {
       this.activeUsers = [];
-      var isOfflineForDatabase = {
-        online: false,
-        modified: firebase.database.ServerValue.TIMESTAMP,
-        displayName: this.user.displayName,
-        photoURL: this.user.photoURL,
-        slug: this.user.slug,
-        uid: this.user.uid,
-      };
-      if (this.userStatusDatabaseRef)
-        this.userStatusDatabaseRef.set(isOfflineForDatabase);
-      this.detatchWatchers();
+      if (auth.currentUser) {
+        var isOfflineForDatabase = {
+          online: false,
+          modified: firebase.database.ServerValue.TIMESTAMP,
+          displayName: this.user.displayName,
+          photoURL: this.user.photoURL,
+          slug: this.user.slug,
+          uid: this.user.uid,
+        };
+        if (this.userStatusDatabaseRef) {
+          this.userStatusDatabaseRef.set(isOfflineForDatabase);
+        }
+        this.detatchWatchers();
+      }
     },
   },
   mounted() {

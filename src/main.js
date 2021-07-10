@@ -18,6 +18,7 @@ auth.onAuthStateChanged((user) => {
     }).$mount('#app')
   }
   if (user) {
-    store.dispatch("fetchUser", user);
+    // store.dispatch("fetchUser", user);
+    store.dispatch("authCheck");
   }
 })

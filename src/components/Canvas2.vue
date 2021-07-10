@@ -188,6 +188,24 @@
         </v-list-item>
       </v-list>
     </v-menu>
+    <v-menu
+      v-if="activeUsers"
+      v-model="showActiveMenu"
+      :position-x="menuX"
+      :position-y="menuY"
+      absolute
+      offset-y
+    >
+      <v-list>
+        <v-list-item
+          v-for="(user, index) in activeUsers"
+          :key="index"
+          @click="giveAccess(user.uid)"
+        >
+          <v-list-item-title>{{ user.displayName }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
     <v-tooltip
       v-for="(item, index) in canvas._objects"
       :key="index"
@@ -219,7 +237,7 @@
 </template>
 
 <script>
-import { db } from "../db";
+import { auth, db } from "../db";
 import { fabric } from "fabric";
 import _ from "lodash";
 
@@ -285,10 +303,12 @@ export default {
     lightGroup: null,
     menuX: 0,
     menuY: 0,
+    showActiveMenu: false,
     objectMenuItems: [
       { title: "Edit", action: "edit" },
       { title: "Delete", action: "delete" },
       { title: "Lock", action: "lock" },
+      { title: "Give Access..", action: "giveaccess" },
     ],
     bgMenuItems: [
       { title: "Add Token", action: "addtoken" },
@@ -321,6 +341,9 @@ export default {
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
       },
+    },
+    activeUsers() {
+      return this.$store.getters.activeUsers;
     },
     editTokenDialog: {
       get() {
@@ -374,18 +397,30 @@ export default {
       this.canvas.freeDrawingBrush.width = width;
     },
     activeBackground() {
-      console.log("activeBackground");
       this.detachListeners();
       this.attachListeners();
     },
     stage(val) {
-      console.log("stage change");
       if (val) {
         this.reloadSession();
       }
     },
   },
   methods: {
+    giveAccess(uid) {
+      if (!auth.currentUser) return;
+      let target = this.clickData.target;
+      var object = this.tokenRef.child(target.__id);
+      if (target.type === "path") {
+        object = this.drawingsRef.child(target.__id);
+      } else if (target.marker) {
+        object = this.markerRef.child(target.__id);
+      }
+      const updates = {
+        hasAccess: uid,
+      };
+      object.update(updates);
+    },
     fireMenuTest(action) {
       console.log(action, " clicked");
       if (action === "lock") {
@@ -400,7 +435,11 @@ export default {
         const updates = {
           selectable: target.selectable,
         };
-        token.update(updates);
+        if (auth.currentUser) token.update(updates);
+      }
+      if (action === "giveaccess") {
+        // this.showObjectMenu = false;
+        this.showActiveMenu = true;
       }
       if (action === "edit") {
         this.editTokenDialog = true;
@@ -490,9 +529,8 @@ export default {
           )
       );
     },
-    createMarker(e) {
+    createMarker() {
       // const pointer = this.canvas.getPointer();
-      console.log(e);
       var shadow = new fabric.Shadow({
         color: "black",
         blur: 50,
@@ -519,14 +557,15 @@ export default {
         evented: true,
         name: "",
         notes: "",
+        hasAccess: "",
         stage: this.stage.slug,
         owner: this.stage.uid,
       };
-      console.log("createMarker()");
-      this.markerRef.push(marker);
+      this.markerRef.push(marker).catch((error) => {
+        console.log("marker: ", error.message);
+      });
     },
     createLightSource() {
-      console.log("light function");
       fabric.loadSVGFromURL(this.lightSVG, (objects, options) => {
         var obj = fabric.util.groupSVGElements(objects, options);
         this.canvas.getHeight();
@@ -540,11 +579,12 @@ export default {
           radius: (this.canvas.getHeight() / this.canvas.getZoom()) * 0.5,
           deletable: false,
         });
-        this.lightRef.push(obj.toJSON());
+        this.lightRef.push(obj.toJSON()).catch((error) => {
+          console.log("lights: ", error.message);
+        });
       });
     },
     editLightMode() {
-      console.log("light mode", this.lightGroup.evented);
       if (!this.lightGroup.evented) {
         this.lightGroup.set({
           evented: true,
@@ -581,7 +621,6 @@ export default {
           selection = this.selected;
         }
       }
-      console.log(selection.type);
       let selectedTokens = [];
       if (selection.type == "activeSelection") {
         selectedTokens = selection._objects;
@@ -591,20 +630,28 @@ export default {
         if (token.deletable) {
           if (token.type === "path") {
             const drawingFB = this.drawingsRef.child(token.__id);
-            drawingFB.remove();
+            drawingFB.remove().catch((error) => {
+              console.log("drawing delete: ", error.message);
+            });
           } else if (token.marker) {
             const markerFB = this.markerRef.child(token.__id);
-            markerFB.remove();
+            markerFB.remove().catch((error) => {
+              console.log("marker delete: ", error.message);
+            });
           } else if (token.type === "image") {
             const tokenFB = this.tokenRef.child(token.__id);
-            tokenFB.remove();
+            tokenFB.remove().catch((error) => {
+              console.log("token delete: ", error.message);
+            });
           } else if (token.type === "group") {
             if (token._objects.length > 5) discardSelection = false;
             else discardSelection = true;
             let lastLight = token._objects[token._objects.length - 1];
             const lightFB = this.lightRef.child(lastLight.__id);
             console.log("light removed");
-            lightFB.remove();
+            lightFB.remove().catch((error) => {
+              console.log("light delete: ", error.message);
+            });
           }
         }
       });
@@ -710,6 +757,7 @@ export default {
           angle: 0,
           scaleX: 1,
           scaleY: 1,
+          hasAccess: "",
           originX: "center",
           originY: "center",
           race: "",
@@ -756,7 +804,9 @@ export default {
           stage: this.stage.slug,
           owner: this.stage.uid,
         };
-        this.bgRef.push(background);
+        this.bgRef.push(background).catch((error) => {
+          console.log("BG: ", error.message);
+        });
       });
       img.src = url;
       this.bgDrag = false;
@@ -790,6 +840,9 @@ export default {
       this.tokenRef.on("child_added", (snapshot) => {
         // console.log("CHILD_ADDED", snapshot.val().url);
         const data = snapshot.val();
+        let hasAccess = false;
+        if (this.user)
+          if (data.hasAccess) hasAccess = data.hasAccess == this.user.uid;
         fabric.Image.fromURL(data.url, (img) => {
           // this.canvas.add(img).setActiveObject(img);
           this.canvas.add(img);
@@ -809,7 +862,8 @@ export default {
             scaleX: data.scaleX,
             scaleY: data.scaleY,
             deletable: data.deletable,
-            selectable: this.isOwner && data.selectable,
+            selectable: (this.isOwner && data.selectable) || hasAccess,
+            hasAccess: hasAccess,
             evented: data.evented,
             angle: data.angle,
             shadow: shadow,
@@ -924,7 +978,6 @@ export default {
             stroke: "rgba(34,177,76,1)",
             strokeWidth: 5,
           });
-          console.log("light group created");
           this.lightGroup = new fabric.Group([r1, r2, r3, r4], {
             originX: "center",
             originY: "center",
@@ -948,14 +1001,11 @@ export default {
         console.log(snapshot);
       });
       this.lightRef.on("child_removed", (snapshot) => {
-        console.log(snapshot);
         const key = snapshot.key;
         let light = this.getLightFromId(key);
         console.log(light, key, this.canvas._objects);
         this.lightGroup.remove(light);
-        console.log(this.lightGroup._objects.length);
         if (this.lightGroup._objects.length === 4) {
-          console.log("lightgroup null");
           this.canvas.remove(this.lightGroup);
           this.lightGroup = null;
         }
@@ -1003,14 +1053,20 @@ export default {
         // this.canvas.discardActiveObject();
         const data = snapshot.val();
         const id = snapshot.key;
+        let hasAccess;
+        if (!auth.currentUser) hasAccess = false;
+        else if (data.hasAccess) hasAccess = data.hasAccess == this.user.uid;
         for (const i in this.canvas._objects) {
           if (this.canvas._objects[i].__id === id) {
             this.canvas._objects[i].set({
               name: data.name,
               race: data.race,
               notes: data.notes,
+              hasAccess: data.hasAccess,
               deletable: data.deletable,
-              selectable: this.isOwner && data.selectable,
+              selectable:
+                (this.isOwner && data.selectable) ||
+                (hasAccess && data.selectable),
               evented: data.evented,
             });
             this.canvas.renderAll();
@@ -1196,7 +1252,9 @@ export default {
           let mouse = this.canvas.getPointer();
           this.tokenAdded.top = mouse.y;
           this.tokenAdded.left = mouse.x;
-          this.tokenRef.push(this.tokenAdded);
+          this.tokenRef.push(this.tokenAdded).catch((error) => {
+            console.log("token: ", error.message);
+          });
           this.isTokenAdded = false;
           this.tokenAdded = {};
           this.snackbar.show = false;
@@ -1361,91 +1419,97 @@ export default {
         });
         const offsetX = (newDrawing.width + this.strokeWidth) / 2;
         const offsetY = (newDrawing.height + this.strokeWidth) / 2;
-        console.log(offsetX, offsetY, newDrawing.top, newDrawing.left);
         let drawing = newDrawing.toJSON();
         drawing.name = "";
         drawing.stage = this.stage.slug;
         drawing.owner = this.stage.uid;
         drawing.notes = "";
+        drawing.hasAccess = "";
         drawing.deletable = true;
         drawing.selectable = true;
         drawing.evented = true;
         drawing.left = drawing.left + offsetX;
         drawing.top = drawing.top + offsetY;
         drawing.fill = "transparent";
-        this.drawingsRef.push(drawing);
+        this.drawingsRef.push(drawing).catch((error) => {
+          console.log("drawing: ", error.message);
+        });
       },
       "object:modified": (e) => {
         if (!this.changing) return;
         if (e.target.type === "textbox") return;
         var objects = [];
-        if (e.target._objects != undefined) {
-          const brokenObjects = this.canvas.getActiveObjects();
-          const canvasJSON = this.canvas.toJSON([
-            "stage",
-            "owner",
-            "__id",
-            "deletable",
-            "selectable",
-            "evented",
-            "name",
-            "race",
-            "notes",
-            "marker",
-          ]).objects;
-          brokenObjects.forEach((broke) => {
-            canvasJSON.forEach((json) => {
-              if (broke.__id === json.__id) objects.push(json);
+        if (auth.currentUser) {
+          if (e.target._objects != undefined) {
+            const brokenObjects = this.canvas.getActiveObjects();
+            const canvasJSON = this.canvas.toJSON([
+              "stage",
+              "owner",
+              "__id",
+              "deletable",
+              "selectable",
+              "evented",
+              "name",
+              "race",
+              "notes",
+              "marker",
+            ]).objects;
+            brokenObjects.forEach((broke) => {
+              canvasJSON.forEach((json) => {
+                if (broke.__id === json.__id) objects.push(json);
+              });
             });
+          } else objects.push(e.target);
+          objects.forEach((object) => {
+            if (object.type === "path") {
+              const drawing = this.drawingsRef.child(object.__id);
+              const updates = {
+                top: object.top,
+                left: object.left,
+                scaleX: object.scaleX,
+                scaleY: object.scaleY,
+                deletable: object.deletable,
+                selectable: object.selectable,
+                evented: object.evented,
+                angle: object.angle,
+                path: object.path,
+                originX: object.originX,
+                originY: object.originY,
+                stroke: object.stroke,
+                strokeWidth: object.strokeWidth,
+              };
+              drawing.update(updates).catch((error) => {
+                console.log("drawing update: ", error.message);
+              });
+            } else if (object.marker) {
+              const marker = this.markerRef.child(object.__id);
+              const updates = {
+                top: object.top,
+                left: object.left,
+                scaleX: object.scaleX,
+                deletable: object.deletable,
+                selectable: object.selectable,
+                evented: object.evented,
+                scaleY: object.scaleY,
+                angle: object.angle,
+              };
+              marker.update(updates);
+            } else if (object.type === "image") {
+              const token = this.tokenRef.child(object.__id);
+              const updates = {
+                top: object.top,
+                left: object.left,
+                deletable: object.deletable,
+                selectable: object.selectable,
+                evented: object.evented,
+                scaleX: object.scaleX,
+                scaleY: object.scaleY,
+                angle: object.angle,
+              };
+              token.update(updates);
+            }
           });
-        } else objects.push(e.target);
-        objects.forEach((object) => {
-          if (object.type === "path") {
-            const drawing = this.drawingsRef.child(object.__id);
-            const updates = {
-              top: object.top,
-              left: object.left,
-              scaleX: object.scaleX,
-              scaleY: object.scaleY,
-              deletable: object.deletable,
-              selectable: object.selectable,
-              evented: object.evented,
-              angle: object.angle,
-              path: object.path,
-              originX: object.originX,
-              originY: object.originY,
-              stroke: object.stroke,
-              strokeWidth: object.strokeWidth,
-            };
-            drawing.update(updates);
-          } else if (object.marker) {
-            const marker = this.markerRef.child(object.__id);
-            const updates = {
-              top: object.top,
-              left: object.left,
-              scaleX: object.scaleX,
-              deletable: object.deletable,
-              selectable: object.selectable,
-              evented: object.evented,
-              scaleY: object.scaleY,
-              angle: object.angle,
-            };
-            marker.update(updates);
-          } else if (object.type === "image") {
-            const token = this.tokenRef.child(object.__id);
-            const updates = {
-              top: object.top,
-              left: object.left,
-              deletable: object.deletable,
-              selectable: object.selectable,
-              evented: object.evented,
-              scaleX: object.scaleX,
-              scaleY: object.scaleY,
-              angle: object.angle,
-            };
-            token.update(updates);
-          }
-        });
+        }
         this.changing = false;
       },
     });

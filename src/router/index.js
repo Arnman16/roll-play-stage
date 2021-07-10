@@ -37,7 +37,9 @@ const ifAuthenticated = (to, from, next) => {
         store.commit("SET_LOADING", false);
         return;
       } else {
-        next("/login");
+        next();
+        // TO MAKE SIGN IN REQUIRED
+        // next("/login"); 
         store.commit("SET_LOADING", false);
       }
     })

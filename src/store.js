@@ -10,8 +10,10 @@ export default new Vuex.Store({
   state: {
     count: 0,
     hello: "WORLD",
+    fetchingUser: false,
     headerHeight: 0,
     selected: {},
+    welcomeDialog: false,
     editTokenDialog: false,
     backgrounds: [
       {
@@ -46,8 +48,14 @@ export default new Vuex.Store({
     editTokenDialog: (state) => {
       return state.editTokenDialog;
     },
+    welcomeDialog: (state) => {
+      return state.welcomeDialog;
+    },
     user: (state) => {
       return state.user;
+    },
+    fetchingUser: (state) => {
+      return state.fetchingUser;
     },
     stage: (state) => {
       return state.stage;
@@ -75,8 +83,14 @@ export default new Vuex.Store({
     SET_EDIT_TOKEN_DIALOG: (state, val) => {
       state.editTokenDialog = val;
     },
+    SET_WELCOME_DIALOG: (state, val) => {
+      state.welcomeDialog = val;
+    },
     SET_USER: (state, val) => {
       state.user = val;
+    },
+    SET_FETCHING_USER: (state, val) => {
+      state.fetchingUser = val;
     },
     SET_STAGE: (state, val) => {
       state.stage = val;
@@ -110,6 +124,10 @@ export default new Vuex.Store({
       commit("SET_EDIT_TOKEN_DIALOG", val);
       return state.editTokenDialog;
     },
+    setWelcomeDialog: ({ commit, state }, val) => {
+      commit("SET_WELCOME_DIALOG", val);
+      return state.welcomeDialog;
+    },
     setActiveBackground: ({ commit, state }, newBackground) => {
       commit("SET_ACTIVE_BACKGROUND", newBackground);
       return state.activeBackground;
@@ -121,6 +139,7 @@ export default new Vuex.Store({
     },
     setStage: ({ commit, state }, val) => {
       commit("SET_STAGE", val);
+      commit("SET_LOADING", false);
       return state.stage;
     },
     signOut: ({ commit }) => {
@@ -134,13 +153,17 @@ export default new Vuex.Store({
           // An error happened.
         });
     },
-    async authCheck({ dispatch }) {
-      if (fb.auth.currentUser) await dispatch("fetchUser", fb.auth.currentUser);
+    async authCheck({ dispatch, commit, state }) {
+      if (state.fetchingUser) return;
+      if (fb.auth.currentUser) {
+        commit("SET_FETCHING_USER", true);
+        await dispatch("fetchUser", fb.auth.currentUser);
+      }
       else console.log("oops");
     },
     async fetchUser({ commit, dispatch }, user) {
       commit("SET_LOADING", true);
-      console.log('--------------------------\nFETCH USER', user);
+      console.log('fetch user');
       try {
         if (user) {
           user.isAuthenticated = true;
@@ -148,30 +171,38 @@ export default new Vuex.Store({
           if (!thisUser.exists) {
             let pageName = randomPageName;
             let slug = slugify(pageName);
-            var searchSlug = await fb.usersCollection.where("slug", "==", slug).get();
+            var searchSlug = await fb.usersCollection.where("slug", "==", slug).get()
+              .then(() => {
+                commit("SET_FETCHING_USER", false);
+              });
             if (searchSlug.size !== 0) {
               console.log('dupe page name');
               randomPageName = backupRandomPageName;
               slug = slugify(randomPageName);
             }
-            thisUser = fb.usersCollection.doc(user.uid).set({
+            const newUser = {
               uid: user.uid,
               displayName: user.displayName,
               email: user.email,
               photoURL: user.photoURL,
               pageName: randomPageName,
-              slug: slugify(randomPageName),
-            }).then(() => {
-              dispatch("setUser", thisUser.data());
+              slug: slug,
+            }
+            fb.usersCollection.doc(user.uid).set(newUser).then(() => {
+              const stageRef = fb.db.database().ref(`stage/${slug}`);
+              stageRef.set({ owner: user.uid });
+              dispatch("setUser", newUser);
             });
           }
           else {
             dispatch("setUser", thisUser.data());
+            commit("SET_FETCHING_USER", false);
           }
         }
         else {
           console.log('setting user null')
           dispatch("setUser", null);
+          commit("SET_FETCHING_USER", false);
         }
       } catch (error) {
         const errorCode = error.code;
@@ -180,6 +211,7 @@ export default new Vuex.Store({
         const credential = error.credential;
         dispatch("setUser", null);
         console.log(errorCode, errorMessage, email, credential);
+        commit("SET_FETCHING_USER", false);
       }
     },
     async fetchStage({ commit, state, dispatch }, slug) {

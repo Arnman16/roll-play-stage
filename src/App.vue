@@ -24,10 +24,10 @@
         :depressed="item.slug == slug"
         :disabled="item.slug == slug"
       >
-        <v-avatar size="23"
+        <v-avatar size="28"
           ><v-img
             :alt="item.displayName.charAt(0)"
-            gradient="to bottom, rgba(79, 162, 76, 0.5), rgba(79, 76, 162, 0.5)"
+            gradient="to bottom, rgba(79, 162, 76, 0.2), rgba(79, 76, 162, 0.2)"
             :src="item.photoURL"
           ></v-img
         ></v-avatar>
@@ -47,7 +47,7 @@
               <v-avatar elevation="40" size="38"
                 ><v-img
                   :alt="user.displayName.charAt(0)"
-                  gradient="to bottom, rgba(79, 162, 76, 0.5), rgba(79, 76, 162, 0.5)"
+                  gradient="to bottom, rgba(79, 162, 76, 0.4), rgba(79, 76, 162, 0.4)"
                   :src="user.photoURL"
                 ></v-img
               ></v-avatar> </v-btn></template
@@ -166,5 +166,8 @@ export default {
 <style>
 html {
   overflow-y: auto;
+}
+.theme--dark.v-btn.v-btn--disabled.v-btn--has-bg {
+    background-color: rgba(255, 255, 255, 0.664) !important;
 }
 </style>

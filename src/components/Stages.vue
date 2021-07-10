@@ -95,5 +95,6 @@ export default {
 }
 .posts {
   align-content: flex-start;
+  max-width: 780px;
 }
 </style>

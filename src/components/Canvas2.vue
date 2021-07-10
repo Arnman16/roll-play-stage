@@ -35,7 +35,7 @@
           direction="right"
           open-on-hover
           transition="slide-y-reverse-transition"
-          style="position: absolute; bottom: 15px; left: 15px"
+          style="position: fixed; bottom: 15px; left: 15px"
         >
           <template v-slot:activator>
             <v-btn v-model="fab" :color="colorPickerColor" dark fab>
@@ -85,8 +85,7 @@
       style="z-index: 0"
       height="34"
       color="rgba(0,0,0,0.8)"
-      absolute
-      app
+      fixed
       padless
       outlined
       v-if="!isMobile"
@@ -340,7 +339,7 @@ export default {
       }
     },
     isMobile() {
-      return this.$vuetify.breakpoint.mobile;
+      return this.$vuetify.breakpoint.xs;
     },
     selected: {
       get() {
@@ -1531,7 +1530,7 @@ export default {
   position: absolute !important;
   top: 20px;
   left: 20px;
-  background-color: red;
+  opacity: 0.9;
 }
 .tooltips {
   margin: 0 auto;

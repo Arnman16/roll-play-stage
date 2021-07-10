@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar app color="dark" dark clipped-right ref="appBar">
+    <v-app-bar app color="rgba(26,26,26,1)" dark clipped-right ref="appBar">
       <div>
         <v-btn icon to="/">
           <v-icon>mdi-map-outline</v-icon>
@@ -109,7 +109,10 @@
       app
       persistent
       right
+      absolute
       clipped
+      floating
+      color="rgba(26,26,26,0.9)"
     >
       <v-card
         rounded
@@ -121,9 +124,9 @@
         class="ma-1"
       >
         <v-card-title class="mx-auto pa-2">
-          <h3 class="mx-auto">
+          <h4 class="mx-auto">
             {{ stage.pageName }}
-          </h3>
+          </h4>
         </v-card-title>
       </v-card>
       <SidePanel />

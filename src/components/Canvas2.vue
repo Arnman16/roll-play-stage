@@ -35,7 +35,7 @@
           direction="right"
           open-on-hover
           transition="slide-y-reverse-transition"
-          style="position: absolute; bottom: -20px; left: 10px"
+          style="position: absolute; bottom: 15px; left: 15px"
         >
           <template v-slot:activator>
             <v-btn v-model="fab" :color="colorPickerColor" dark fab>
@@ -84,22 +84,27 @@
     <v-footer
       style="z-index: 0"
       height="34"
-      color="rgba(0,0,0,0.5)"
-      fixed
+      color="rgba(0,0,0,0.8)"
+      absolute
       app
       padless
       outlined
+      v-if="!isMobile"
     >
       <v-row class="py-0 mx-4">
         <v-col cols="4"></v-col>
 
-        <v-col class="text-center text-caption pa-1 my-auto" cols="3">
+        <v-col
+          class="text-center text-caption pa-1 my-auto"
+          cols="3"
+          v-if="!isMobile"
+        >
           {{ new Date().getFullYear() }} — <strong>Roll Play Stage</strong>
         </v-col>
         <v-col
           class="text-center text-caption pa-1 font-weight-thin my-auto"
           style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
-          cols="3"
+          :cols="isMobile ? '5' : '3'"
         >
           bg: {{ this.activeBackground.name }} [{{
             this.activeBackground.width + ", " + this.activeBackground.height
@@ -107,7 +112,7 @@
         </v-col>
         <v-col
           @click="testFunction"
-          cols="2"
+          :cols="isMobile ? '3' : '2'"
           class="text-center text-caption pa-1 font-weight-thin my-auto"
           style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
         >
@@ -333,6 +338,9 @@ export default {
         default:
           return {};
       }
+    },
+    isMobile() {
+      return this.$vuetify.breakpoint.mobile;
     },
     selected: {
       get() {
@@ -1177,7 +1185,7 @@ export default {
   },
   mounted() {
     const ref = this.$refs.can;
-    this.headerHeight = this.$refs.appBar;
+    this.headerHeight = this.$store.getters.headerHeight;
     this.canvas = new fabric.Canvas(ref, {
       fireRightClick: true, // <-- enable firing of right click events
       fireMiddleClick: true, // <-- enable firing of middle click events
@@ -1185,11 +1193,12 @@ export default {
     });
     this.reloadSession();
     const fullWidth = window.innerWidth;
-    const fullHeight = window.innerHeight - 85;
+    console.log("HH", this.headerHeight);
+    const fullHeight = window.innerHeight - this.headerHeight - 5;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
-      const fullHeight = window.innerHeight - 85;
+      const fullHeight = window.innerHeight;
       this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     });
     window.addEventListener("keyup", (e) => {
@@ -1518,7 +1527,7 @@ export default {
 </script>
 <style>
 .minimap {
-  border: 1px solid blue;
+  /* border: 1px solid white; */
   position: absolute !important;
   top: 20px;
   left: 20px;
@@ -1529,5 +1538,8 @@ export default {
   text-align: center;
   vertical-align: middle;
   font: caption;
+}
+.html {
+  overflow-y: hidden;
 }
 </style>

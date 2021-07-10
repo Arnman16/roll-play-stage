@@ -7,7 +7,8 @@
         :class="{
           'on-hover': hover,
         }"
-        class="ma-3"
+        class="mx-auto my-2"
+        max-width="isMobile ? '98%' : '75%'"
         :to="slug"
       >
         <v-list-item three-line>
@@ -63,7 +64,11 @@ export default {
     },
   },
   components: {},
-  computed: {},
+  computed: {
+    isMobile() {
+      return this.$vuetify.breakpoint.mobile;
+    },
+  },
   data() {
     return {};
   },
@@ -74,7 +79,6 @@ export default {
 <style scoped>
 .v-card {
   transition: opacity 0.1s ease-in-out;
-  max-width: 50rem;
 }
 
 .v-card:not(.on-hover) {

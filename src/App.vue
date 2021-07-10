@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar dense app color="dark" dark clipped-right ref="appBar">
+    <v-app-bar app color="dark" dark clipped-right ref="appBar">
       <div>
         <v-btn icon to="/">
           <v-icon>mdi-map-outline</v-icon>
@@ -9,13 +9,26 @@
       </div>
 
       <v-spacer></v-spacer>
-      <div v-if="stage" class="mx-5">
-        {{ stage.pageName }}
-      </div>
+      <v-card
+        rounded
+        disabled
+        v-if="stage && !isMobile"
+        tile
+        elevation="10"
+        color="grey darken-4"
+        class="ma-1"
+      >
+        <div class="mx-5">
+          <h3 class="text-primary">
+            {{ stage.pageName }}
+          </h3>
+        </div>
+      </v-card>
       <v-spacer></v-spacer>
       <v-btn
         fab
         x-small
+        transition="fab-transition"
         v-for="(item, uid) in activeUsers"
         :key="uid"
         elevation="40"
@@ -23,6 +36,7 @@
         class="ma-1"
         :depressed="item.slug == slug"
         :disabled="item.slug == slug"
+        :show="item"
       >
         <v-avatar size="28"
           ><v-img
@@ -34,46 +48,87 @@
       </v-btn>
       <v-btn v-if="!user" @click="showLogin = true">Sign In</v-btn>
       <div v-else>
-        <v-menu offset-y>
+        <v-menu offset-y open-on-hover tile nudge-bottom="7" close-delay="100">
           <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              fab
-              small
-              elevation="40"
-              v-bind="attrs"
-              v-on="on"
-              class="ma-1"
-            >
-              <v-avatar elevation="40" size="38"
+            <v-btn elevation="40" v-bind="attrs" v-on="on" class="ma-1">
+              <v-avatar elevation="40" size="32"
                 ><v-img
                   :alt="user.displayName.charAt(0)"
                   gradient="to bottom, rgba(79, 162, 76, 0.4), rgba(79, 76, 162, 0.4)"
                   :src="user.photoURL"
-                ></v-img
-              ></v-avatar> </v-btn></template
-          ><v-list>
+                ></v-img></v-avatar
+              ><v-icon>mdi-menu-down</v-icon></v-btn
+            ></template
+          ><v-list class="mx-auto">
             <v-list-item dense :to="'/stages/' + user.slug">
-              <v-list-item-title>My Stage</v-list-item-title>
+              <v-list-item-icon class="mx-2">
+                <v-icon v-text="'mdi-file-table-box'"></v-icon>
+              </v-list-item-icon>
+              <v-list-item-title class="mx-5">My Stage</v-list-item-title>
             </v-list-item>
-            <v-list-item dense>
-              <v-list-item-title>Profile</v-list-item-title>
+
+            <v-list-item dense to="/saved">
+              <v-list-item-icon class="mx-2">
+                <v-icon v-text="'mdi-cards-heart'"></v-icon>
+              </v-list-item-icon>
+              <v-list-item-title class="mx-5">Saved</v-list-item-title>
             </v-list-item>
-            <v-list-item dense>
-              <v-list-item-title>Settings</v-list-item-title>
+
+            <v-list-item dense to="/user">
+              <v-list-item-icon class="mx-2">
+                <v-icon v-text="'mdi-account-circle'"></v-icon>
+              </v-list-item-icon>
+              <v-list-item-title class="mx-5">Profile</v-list-item-title>
             </v-list-item>
+
+            <v-list-item dense to="/settings">
+              <v-list-item-icon class="mx-2">
+                <v-icon v-text="'mdi-account-cog'"></v-icon>
+              </v-list-item-icon>
+              <v-list-item-title class="mx-5">Settings</v-list-item-title>
+            </v-list-item>
+
             <v-list-item dense @click="signOut">
-              <v-list-item-title>Sign Out</v-list-item-title>
+              <v-list-item-icon class="mx-2">
+                <v-icon v-text="'mdi-logout'"></v-icon>
+              </v-list-item-icon>
+              <v-list-item-title class="mx-5">Sign Out</v-list-item-title>
             </v-list-item>
           </v-list></v-menu
         >
       </div>
 
-      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+      <v-app-bar-nav-icon
+        v-if="slug"
+        @click.stop="drawer = !drawer"
+      ></v-app-bar-nav-icon>
     </v-app-bar>
-    <v-navigation-drawer v-model="drawer" app persistent right clipped>
+    <v-navigation-drawer
+      v-if="slug"
+      v-model="drawer"
+      app
+      persistent
+      right
+      clipped
+    >
+      <v-card
+        rounded
+        disabled
+        tile
+        elevation="10"
+        v-if="stage"
+        color="blue-grey darken-4"
+        class="ma-1"
+      >
+        <v-card-title class="mx-auto pa-2">
+          <h3 class="mx-auto">
+            {{ stage.pageName }}
+          </h3>
+        </v-card-title>
+      </v-card>
       <SidePanel />
     </v-navigation-drawer>
-    <v-main>
+    <v-main class="pb-0 bb-0">
       <router-view></router-view>
     </v-main>
     <v-dialog v-model="showLogin" persistent max-width="600px">
@@ -138,6 +193,9 @@ export default {
     stage() {
       return this.$store.getters.stage;
     },
+    isMobile() {
+      return this.$vuetify.breakpoint.xs;
+    },
   },
   watch: {
     user(val) {
@@ -168,6 +226,10 @@ html {
   overflow-y: auto;
 }
 .theme--dark.v-btn.v-btn--disabled.v-btn--has-bg {
-    background-color: rgba(255, 255, 255, 0.664) !important;
+  background-color: rgba(255, 255, 255, 0.664) !important;
+}
+html {
+  overflow-y: auto;
+  /* font-family: "Roboto"; */
 }
 </style>

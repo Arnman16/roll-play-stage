@@ -29,6 +29,14 @@ export default {
     isMobile() {
       return this.$vuetify.breakpoint.mobile;
     },
+    loading: {
+      get() {
+        return this.$store.getters.loading;
+      },
+      set(val) {
+        this.$store.commit("SET_LOADING", val);
+      },
+    },
   },
   data() {
     return {
@@ -47,6 +55,7 @@ export default {
   },
   mounted() {
     this.getStages();
+    this.loading = false;
   },
 };
 </script>

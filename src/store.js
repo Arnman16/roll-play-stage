@@ -1,7 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import * as fb from "./db";
-import { backupRandomPageName, randomPageName, slugify } from "./assets/words"
+import { randomPageName, slugify } from "./assets/words"
 import router from "./router";
 
 Vue.use(Vuex);
@@ -171,27 +171,38 @@ export default new Vuex.Store({
           if (!thisUser.exists) {
             let pageName = randomPageName;
             let slug = slugify(pageName);
-            var searchSlug = await fb.usersCollection.where("slug", "==", slug).get()
-              .then(() => {
-                commit("SET_FETCHING_USER", false);
-              });
-            if (searchSlug.size !== 0) {
-              console.log('dupe page name');
-              randomPageName = backupRandomPageName;
-              slug = slugify(randomPageName);
-            }
+            // when I have to worry about dupes later
+            // fb.usersCollection.where("slug", "==", slug).get()
+            //   .then((result) => {
+            //     commit("SET_FETCHING_USER", false);
+            //     if (result.val()) {
+            //       console.log('dupe page name');
+            //       pageName = backupRandomPageName;
+            //       slug = slugify(pageName);
+            //     }
+            //   });
             const newUser = {
               uid: user.uid,
               displayName: user.displayName,
               email: user.email,
               photoURL: user.photoURL,
-              pageName: randomPageName,
+              pageName: pageName,
               slug: slug,
             }
             fb.usersCollection.doc(user.uid).set(newUser).then(() => {
-              const stageRef = fb.db.database().ref(`stage/${slug}`);
-              stageRef.set({ owner: user.uid });
               dispatch("setUser", newUser);
+              const userStage = fb.db.database().ref(`users/${user.uid}/stages/${slug}`);
+              const defaultRef = fb.db.database().ref("default");
+              defaultRef.once("value")
+              .then((snapshot)=> {
+                userStage.set(snapshot.val())
+              })
+              .catch((error) => {
+                console.log("New User", error);
+              });
+            })
+            .catch((error) => {
+              console.log("New User", error);
             });
           }
           else {

@@ -76,6 +76,8 @@ export default {
     },
     setUserStatus() {
       if (auth.currentUser) {
+        const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+        const viewersSlug = `${slug}/viewers/`;
         // console.log(auth.currentUser);
         // Fetch the current user's ID from Firebase Authentication.
         var uid = auth.currentUser.uid;
@@ -83,9 +85,7 @@ export default {
         // Create a reference to this user's specific status node.
         // This is where we will store data about being online/offline.
         // var userStatusDatabaseRef = db.database().ref("/status/" + uid);
-        this.userStatusDatabaseRef = db
-          .database()
-          .ref("stage/" + this.stage.slug + "/users/" + uid);
+        this.userStatusDatabaseRef = db.database().ref(viewersSlug + uid);
 
         // We'll create two constants which we will write to
         // the Realtime database when this device is offline
@@ -140,11 +140,13 @@ export default {
     },
     setUserWatchers() {
       this.activeUsers = [];
+      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const viewersSlug = `${slug}/viewers`;
       if (this.stageUsersRef) this.stageUsersRef.off();
 
       this.stageUsersRef = db
         .database()
-        .ref("stage/" + this.stage.slug + "/users");
+        .ref(viewersSlug);
 
       this.stageUsersRef.on("child_changed", (snapshot) => {
         const val = snapshot.val();

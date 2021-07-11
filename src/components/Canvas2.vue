@@ -246,6 +246,7 @@ import { fabric } from "fabric";
 import _ from "lodash";
 
 const lightSVG = require("../assets/svg/light.svg");
+
 export default {
   name: "Canvas2",
   data: () => ({
@@ -826,7 +827,7 @@ export default {
       this.canvas.clear();
     },
     attachListeners() {
-      const slug = "stage/" + this.stage.slug;
+      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       this.tokenRef = db.database().ref(bgSlug + "/tokens");
       this.markerRef = db.database().ref(bgSlug + "/markers");
@@ -1054,7 +1055,6 @@ export default {
         const token = this.getTokenFromId(id);
         this.canvas.remove(token);
       });
-
       this.tokenRef.on("child_changed", (snapshot) => {
         if (this.changing) return;
         // this.canvas.discardActiveObject();
@@ -1148,7 +1148,7 @@ export default {
     reloadSession() {
       if (this.sessionRef) this.sessionRef.off();
       if (this.bgRef) this.bgRef.off();
-      const slug = "stage/" + this.stage.slug;
+      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
       this.sessionRef = db.database().ref(slug + "/session");
       this.bgRef = db.database().ref(slug + "/backgrounds");
       this.bgRef.on("value", (snapshot) => {
@@ -1166,6 +1166,9 @@ export default {
         .child(1)
         .get()
         .then((result) => {
+          if(!result.val()){
+            return;
+          }
           this.activeBackground = result.val().activeBackground;
           this.setBG(this.activeBackground.url);
           // this.attachListeners();

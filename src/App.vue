@@ -16,6 +16,7 @@
             }"
             color="transparent"
             flat
+            tile
             to="/"
             class="ma-1"
           >

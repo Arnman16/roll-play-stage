@@ -12,7 +12,7 @@
       -Aaron
     </div>
     <v-row dense justify="space-around" align="center">
-      <v-col :cols="isMobile ? 12 : 6" align="center">
+      <v-col :cols="isMobile ? 12 : 6" align="center" v-if="user">
         <v-hover v-slot="{ hover }">
           <v-card
             :class="{
@@ -39,7 +39,7 @@
           </v-card>
         </v-hover>
       </v-col>
-      <v-col :cols="isMobile ? 12 : 6" align="center">
+      <v-col :cols="isMobile ? 12 : 6" align="center" v-if="user">
         <v-hover v-slot="{ hover }">
           <v-card
             :class="{

@@ -197,17 +197,18 @@ export default {
   },
   methods: {
     saveToken() {
-      const slug = "stage/" + this.stage.slug + "/backgrounds/" + this.activeBackground.__id; 
+      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       if (this.selected.type === "path") {
-        const drawingRef = db.database().ref(slug + "/drawings");
+        const drawingRef = db.database().ref(bgSlug + "/drawings");
         const drawing = drawingRef.child(this.selected.__id);
         drawing.update(this.selected);
       } else if (this.selected.marker === true) {
-        const markerRef = db.database().ref(slug + "/markers");
+        const markerRef = db.database().ref(bgSlug + "/markers");
         const marker = markerRef.child(this.selected.__id);
         marker.update(this.selected);
       } else {
-        const tokenRef = db.database().ref(slug + "/tokens");
+        const tokenRef = db.database().ref(bgSlug + "/tokens");
         const token = tokenRef.child(this.selected.__id);
         const update = {
           name: this.selected.name,
@@ -216,13 +217,14 @@ export default {
           evented: this.selected.evented,
           deletable: this.selected.deletable,
           selectable: this.selected.selectable,
-        }
+        };
         token.update(update);
       }
       this.editTokenDialog = false;
     },
     setActiveBg(background) {
-      const slug = "stage/" + this.stage.slug;
+      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      // const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       this.sessionRef = db.database().ref(slug + "/session");
       this.sessionRef.child(1).update({
         activeBackground: background,

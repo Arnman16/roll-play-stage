@@ -1237,7 +1237,11 @@ export default {
           console.log("start drawing");
           return;
         }
-        if (evt.button === 2 || evt.altKey === true) {
+        if (
+          evt.button === 2 ||
+          evt.altKey === true ||
+          (this.isMobile && evt.button === 1)
+        ) {
           this.canvas.isDragging = true;
           this.canvas.selection = false;
           this.canvas.lastPosX = evt.clientX;

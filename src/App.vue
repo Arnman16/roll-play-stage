@@ -1,14 +1,44 @@
 <template>
   <v-app>
-    <v-app-bar app color="rgba(26,26,26,1)" dark clipped-right ref="appBar">
+    <v-app-bar
+      app
+      color="rgba(26,26,26,1)"
+      class="px-0"
+      dark
+      clipped-right
+      ref="appBar"
+    >
       <div>
-        <v-btn icon to="/">
-          <v-icon>mdi-map-outline</v-icon>
-          <!-- Roll Play Stage -->
-        </v-btn>
+        <v-hover v-slot="{ hover }">
+          <v-card
+            :class="{
+              'on-hover': hover,
+            }"
+            color="transparent"
+            flat
+            to="/"
+            class="ma-1"
+          >
+            <v-img
+              :max-height="headerHeight - 10"
+              :max-width="headerHeight - 10"
+              :src="logo"
+              to="/"
+            ></v-img>
+          </v-card>
+        </v-hover>
+        <!-- Roll Play Stage -->
       </div>
-
-      <v-spacer></v-spacer>
+      <v-slide-x-transition hide-on-leave>
+        <div v-show="route == 'Home'" class="mx-3 text-h5">Roll Play Stage</div>
+      </v-slide-x-transition>
+      <v-slide-x-transition hide-on-leave>
+        <div v-show="route == 'Stages'" class="mx-3 text-h5">Stages</div>
+      </v-slide-x-transition>
+      <v-slide-x-transition hide-on-leave v-if="!isMobile">
+        <div v-show="route == 'Stage'" class="mx-3 text-h5" v-text="stage ? `Stage - ${stage.pageName}` : 'Stage - '"></div>
+      </v-slide-x-transition>
+      <!-- <v-spacer></v-spacer>
       <v-card
         rounded
         disabled
@@ -23,7 +53,7 @@
             {{ stage.pageName }}
           </h3>
         </div>
-      </v-card>
+      </v-card> -->
       <v-spacer></v-spacer>
       <v-btn
         fab
@@ -109,7 +139,7 @@
       app
       persistent
       right
-      absolute
+      fixed
       clipped
       floating
       color="rgba(26,26,26,0.9)"
@@ -171,6 +201,7 @@
 // import Canvas2 from "./components/Canvas2";
 import SidePanel from "./components/SidePanel";
 import Login from "./components/Login";
+const logo = require("./assets/logo.svg");
 
 export default {
   name: "App",
@@ -189,6 +220,9 @@ export default {
     },
     slug() {
       return this.$route.params.slug;
+    },
+    route() {
+      return this.$route.name;
     },
     activeUsers() {
       return this.$store.getters.activeUsers;
@@ -211,6 +245,7 @@ export default {
     drawer: false,
     headerHeight: {},
     showLogin: false,
+    logo: logo,
   }),
   methods: {
     signOut() {
@@ -234,5 +269,14 @@ html {
 html {
   overflow-y: auto;
   /* font-family: "Roboto"; */
+}
+.v-card {
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.v-card:not(.on-hover) {
+  opacity: 0.9;
+  filter: grayscale(50%);
 }
 </style>

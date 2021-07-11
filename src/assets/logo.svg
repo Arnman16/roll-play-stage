@@ -1,1 +1,19 @@
-<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 87.5 100"><defs><style>.cls-1{fill:#1697f6;}.cls-2{fill:#7bc6ff;}.cls-3{fill:#1867c0;}.cls-4{fill:#aeddff;}</style></defs><title>Artboard 46</title><polyline class="cls-1" points="43.75 0 23.31 0 43.75 48.32"/><polygon class="cls-2" points="43.75 62.5 43.75 100 0 14.58 22.92 14.58 43.75 62.5"/><polyline class="cls-3" points="43.75 0 64.19 0 43.75 48.32"/><polygon class="cls-4" points="64.58 14.58 87.5 14.58 43.75 100 43.75 62.5 64.58 14.58"/></svg>
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:bx="https://boxy-svg.com">
+  <defs>
+    <linearGradient id="gradient-4-0" gradientUnits="userSpaceOnUse" x1="125" y1="0" x2="125" y2="250" gradientTransform="matrix(-0.682835, -0.730576, 0.875, -0.875, 116.604412, 560.071982)" xlink:href="#gradient-4"/>
+    <linearGradient id="gradient-4" bx:pinned="true">
+      <stop offset="0" style="stop-color: rgb(192, 211, 223);"/>
+      <stop offset="1" style="stop-color: rgb(85, 167, 218);"/>
+    </linearGradient>
+    <linearGradient id="gradient-4-1" gradientUnits="userSpaceOnUse" x1="375.629" y1="249.774" x2="375.629" y2="499.774" gradientTransform="matrix(-0.723462, -0.690368, 0.875, -0.875, 84.450859, 946.624423)" xlink:href="#gradient-4"/>
+  </defs>
+  <g style="">
+    <path style="fill: rgb(85, 167, 218);" transform="matrix(0.670985, 0, 0, 0.670988, -88.638016, -16.747293)" d="M 765.431 404.687 A 261.277 261.277 0 1 1 504.242 136.602 L 504.242 198.759 A 199.12 199.12 0 1 0 703.294 403.067 Z" bx:shape="pie 504.242 397.879 199.12 261.277 91.493 360 1@fd142040"/>
+    <path d="M -0.072 468.75 L 468.75 0 L 500 0 L 500 31.25 L 31.25 499.999" style="fill: rgb(85, 167, 218);"/>
+  </g>
+  <g style="isolation: isolate;">
+    <rect width="250" height="250" style="stroke-width: 29px; fill: url(#gradient-4-0);"/>
+    <rect x="250" y="250" width="250" height="250" style="stroke-width: 29px; fill: url(#gradient-4-1);"/>
+  </g>
+</svg>

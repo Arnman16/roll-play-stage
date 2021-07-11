@@ -39,6 +39,9 @@
       <v-slide-x-transition hide-on-leave v-if="!isMobile">
         <div v-show="route == 'Stage'" class="mx-3 text-h5" v-text="stage ? `Stage - ${stage.pageName}` : 'Stage - '"></div>
       </v-slide-x-transition>
+      <v-slide-x-transition hide-on-leave v-if="!isMobile">
+        <div v-show="route == 'Saved'" class="mx-3 text-h5" v-text="'Saved'"></div>
+      </v-slide-x-transition>
       <!-- <v-spacer></v-spacer>
       <v-card
         rounded

@@ -7,6 +7,7 @@ import Login from "@/components/Login.vue";
 import Signup from "@/components/Signup.vue";
 import Stage from "@/components/Stage.vue";
 import Stages from "@/components/Stages.vue";
+import Saved from "@/components/Saved.vue";
 import NotFound from "@/components/NotFound.vue";
 // import Unpublished from "@/components/Unpublished.vue";
 // import UnpublishedPost from "@/components/UnpublishedPost.vue";
@@ -68,6 +69,12 @@ const routes = [
     path: "/stages/:slug",
     name: "Stage",
     component: Stage,
+    beforeEnter: ifAuthenticated,
+  },
+  {
+    path: "/saved",
+    name: "Saved",
+    component: Saved,
     beforeEnter: ifAuthenticated,
   },
   {

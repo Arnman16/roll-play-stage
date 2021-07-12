@@ -38,6 +38,12 @@ export default {
         this.setUserStatus();
       }
     },
+    stageSaved(isSaved) {
+      console.log("stage save:", isSaved);
+      if (this.userStatusDatabaseRef) {
+        this.userStatusDatabaseRef.update({ saved: isSaved });
+      }
+    },
   },
   computed: {
     activeUsers: {
@@ -46,6 +52,14 @@ export default {
       },
       set(val) {
         this.$store.dispatch("setActiveUsers", val);
+      },
+    },
+    stageSaved: {
+      get() {
+        return this.$store.getters.stageSaved;
+      },
+      set(val) {
+        this.$store.commit("SET_STAGE_SAVED", val);
       },
     },
     user() {
@@ -93,10 +107,10 @@ export default {
         var isOfflineForDatabase = {
           online: false,
           modified: firebase.database.ServerValue.TIMESTAMP,
-          displayName: this.user.displayName,
-          photoURL: this.user.photoURL,
-          slug: this.user.slug,
-          uid: uid,
+          // displayName: this.user.displayName,
+          // photoURL: this.user.photoURL,
+          // slug: this.user.slug,
+          // uid: uid,
         };
 
         var isOnlineForDatabase = {
@@ -106,6 +120,7 @@ export default {
           photoURL: this.user.photoURL,
           slug: this.user.slug,
           uid: uid,
+          saved: false,
         };
 
         // Create a reference to the special '.info/connected' path in
@@ -124,7 +139,7 @@ export default {
           // losing internet, or any other means.
           this.userStatusDatabaseRef
             .onDisconnect()
-            .set(isOfflineForDatabase)
+            .update(isOfflineForDatabase)
             .then(() => {
               // The promise returned from .onDisconnect().set() will
               // resolve as soon as the server acknowledges the onDisconnect()
@@ -144,9 +159,7 @@ export default {
       const viewersSlug = `${slug}/viewers`;
       if (this.stageUsersRef) this.stageUsersRef.off();
 
-      this.stageUsersRef = db
-        .database()
-        .ref(viewersSlug);
+      this.stageUsersRef = db.database().ref(viewersSlug);
 
       this.stageUsersRef.on("child_changed", (snapshot) => {
         const val = snapshot.val();
@@ -165,6 +178,7 @@ export default {
         const val = snapshot.val();
         let notMe = true;
         if (this.user) notMe = snapshot.key !== this.user.uid;
+        if (!notMe) this.stageSaved = val.saved;
         let active = this.activeUsers.filter(
           (item) => item.uid !== snapshot.key
         );
@@ -186,13 +200,13 @@ export default {
         var isOfflineForDatabase = {
           online: false,
           modified: firebase.database.ServerValue.TIMESTAMP,
-          displayName: this.user.displayName,
-          photoURL: this.user.photoURL,
-          slug: this.user.slug,
-          uid: this.user.uid,
+          // displayName: this.user.displayName,
+          // photoURL: this.user.photoURL,
+          // slug: this.user.slug,
+          // uid: this.user.uid,
         };
         if (this.userStatusDatabaseRef) {
-          this.userStatusDatabaseRef.set(isOfflineForDatabase);
+          this.userStatusDatabaseRef.update(isOfflineForDatabase);
         }
         this.detatchWatchers();
       }
@@ -207,3 +221,12 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.html {
+  overflow-y: hidden;
+}
+.v-main {
+  overflow-y: hidden;
+}
+</style>

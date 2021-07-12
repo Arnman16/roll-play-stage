@@ -1,5 +1,30 @@
 <template>
-  <div>
+  <v-navigation-drawer
+    v-if="slug"
+    v-model="drawer"
+    app
+    persistent
+    right
+    fixed
+    clipped
+    floating
+    color="rgba(26,26,26,0.9)"
+  >
+    <v-card
+      rounded
+      disabled
+      tile
+      elevation="10"
+      v-if="stage"
+      color="blue-grey darken-4"
+      class="ma-1"
+    >
+      <v-card-title class="mx-auto pa-2">
+        <h4 class="mx-auto">
+          {{ stage.pageName }}
+        </h4>
+      </v-card-title>
+    </v-card>
     <v-container class="pa-1">
       <v-expansion-panels focusable accordion multiple>
         <v-expansion-panel>
@@ -117,10 +142,11 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </div>
+  </v-navigation-drawer>
 </template>
 <script>
 import { db } from "../db";
+import { mapGetters } from "vuex";
 export default {
   name: "SidePanel",
   watch: {
@@ -156,12 +182,23 @@ export default {
     };
   },
   computed: {
-    stage() {
-      return this.$store.getters.stage;
+    drawer: {
+      get() {
+        return this.$store.getters.drawer;
+      },
+      set(drawerState) {
+        this.$store.commit("SET_DRAWER", drawerState);
+      },
+    },
+    ...mapGetters({
+      stage: "stage",
+    }),
+    slug() {
+      return this.$route.params.slug;
     },
     selected: {
       get() {
-        return this.$store.state.selected;
+        return this.$store.getters.selected;
       },
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
@@ -177,7 +214,7 @@ export default {
     },
     backgrounds: {
       get() {
-        return this.$store.state.backgrounds;
+        return this.$store.getters.backgrounds;
       },
       set(newBackgrounds) {
         return this.$store.dispatch("setBackgrounds", newBackgrounds);
@@ -185,7 +222,7 @@ export default {
     },
     activeBackground: {
       get() {
-        return this.$store.state.activeBackground;
+        return this.$store.getters.activeBackground;
       },
       set(newActiveBackground) {
         return this.$store.dispatch("setActiveBackground", newActiveBackground);

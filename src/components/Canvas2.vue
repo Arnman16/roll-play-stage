@@ -344,7 +344,7 @@ export default {
     },
     selected: {
       get() {
-        return this.$store.state.selected;
+        return this.$store.getters.selected;
       },
       set(newSelection) {
         return this.$store.dispatch("setSelected", newSelection);
@@ -363,7 +363,7 @@ export default {
     },
     backgrounds: {
       get() {
-        return this.$store.state.backgrounds;
+        return this.$store.getters.backgrounds;
       },
       set(newBackgrounds) {
         return this.$store.dispatch("setBackgrounds", newBackgrounds);
@@ -371,7 +371,7 @@ export default {
     },
     activeBackground: {
       get() {
-        return this.$store.state.activeBackground;
+        return this.$store.getters.activeBackground;
       },
       set(newActiveBackground) {
         return this.$store.dispatch("setActiveBackground", newActiveBackground);

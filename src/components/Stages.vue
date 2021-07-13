@@ -19,7 +19,7 @@
 
 <script>
 import StageCard from "./StageCard.vue";
-import { usersCollection } from "../db";
+import { stagesCollection } from "../db";
 export default {
   name: "Stage",
   components: {
@@ -45,7 +45,7 @@ export default {
   },
   methods: {
     getStages() {
-      usersCollection.get().then((snapshot) => {
+      stagesCollection.get().then((snapshot) => {
         snapshot.forEach((doc) => {
           let stage = doc.data();
           this.stages.push(stage);

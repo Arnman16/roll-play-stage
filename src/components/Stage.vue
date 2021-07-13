@@ -1,8 +1,8 @@
 <template>
   <div>
     <div v-if="stage !== null">
-      <!-- <h1>{{stage.pageName}}</h1> -->
-      <Canvas2 />
+      <CanvasOwner v-if="isOwner" />
+      <CanvasViewer v-else />
     </div>
     <v-container fluid fill-height v-else-if="!stage && !loading">
       <v-row justify="space-around">
@@ -19,13 +19,16 @@
 </template>
 
 <script>
-import Canvas2 from "./Canvas2.vue";
+import CanvasOwner from "./CanvasOwner.vue";
+import CanvasViewer from "./CanvasViewer.vue";
 import { db, firebase, auth } from "../db";
+import { mapGetters } from "vuex";
 // import firebase from "firebase"
 export default {
   name: "Stage",
   components: {
-    Canvas2,
+    CanvasOwner,
+    CanvasViewer,
   },
   watch: {
     $route: {
@@ -39,13 +42,19 @@ export default {
       }
     },
     stageSaved(isSaved) {
-      console.log("stage save:", isSaved);
       if (this.userStatusDatabaseRef) {
+        console.log("IS SAVED", isSaved);
         this.userStatusDatabaseRef.update({ saved: isSaved });
       }
     },
   },
   computed: {
+    ...mapGetters({
+      user: "user",
+      loading: "loading",
+      stage: "stage",
+      isAuthenticated: "isAuthenticated",
+    }),
     activeUsers: {
       get() {
         return this.$store.getters.activeUsers;
@@ -62,17 +71,13 @@ export default {
         this.$store.commit("SET_STAGE_SAVED", val);
       },
     },
-    user() {
-      return this.$store.getters.user;
-    },
-    stage() {
-      return this.$store.getters.stage;
-    },
-    loading() {
-      return this.$store.getters.loading;
-    },
     slug() {
       return this.$route.params.slug;
+    },
+    isOwner() {
+      if (!this.stage) return false;
+      if (!this.isAuthenticated) return false;
+      return this.user.uid === this.stage.owner;
     },
   },
   data() {
@@ -118,7 +123,7 @@ export default {
           modified: firebase.database.ServerValue.TIMESTAMP,
           displayName: this.user.displayName,
           photoURL: this.user.photoURL,
-          slug: this.user.slug,
+          slug: this.user.slug ? this.user.slug : '/',
           uid: uid,
           saved: false,
         };
@@ -178,7 +183,9 @@ export default {
         const val = snapshot.val();
         let notMe = true;
         if (this.user) notMe = snapshot.key !== this.user.uid;
-        if (!notMe) this.stageSaved = val.saved;
+        if (!notMe) {
+          if (val.saved) this.stageSaved = val.saved;
+        }
         let active = this.activeUsers.filter(
           (item) => item.uid !== snapshot.key
         );

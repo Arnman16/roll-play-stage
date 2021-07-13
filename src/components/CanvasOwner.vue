@@ -38,7 +38,7 @@
       direction="right"
       open-on-hover
       transition="slide-y-reverse-transition"
-      style="position: absolute; bottom: 15px; left: 15px; z-index: 2;"
+      style="position: absolute; bottom: 15px; left: 15px; z-index: 2"
     >
       <template v-slot:activator>
         <v-btn v-model="fab" :color="colorPickerColor" dark fab>
@@ -73,6 +73,9 @@
           drawMode ? "mdi-cursor-default-outline" : "mdi-brush"
         }}</v-icon>
       </v-btn>
+      <v-btn fab dark small color="purple" @click="isRulerTool = !isRulerTool"
+        ><v-icon>mdi-ruler</v-icon></v-btn
+      >
       <v-btn
         fab
         :color="colorPickerColor"
@@ -92,8 +95,9 @@
       v-if="!isMobile"
     >
       <v-row class="py-0 mx-4">
-        <v-col cols="4"></v-col>
-
+        <v-col class="text-center text-caption pa-1 my-auto" cols="4"
+          >owner</v-col
+        >
         <v-col
           class="text-center text-caption pa-1 my-auto"
           cols="3"
@@ -116,7 +120,15 @@
           class="text-center text-caption pa-1 font-weight-thin my-auto"
           style="border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.3"
         >
-          {{ mouse.x + ", " + mouse.y + "px" }}
+          {{
+            isMeasuring
+              ? rulerLength.toFixed(1)
+              : objectSelected
+              ? distanceFromSelected.toFixed(1)
+              : `${(mouse.x * mapScale).toFixed(1)}, ${(
+                  mouse.y * mapScale
+                ).toFixed(1)} (ft)`
+          }}
         </v-col>
       </v-row>
     </v-footer>
@@ -146,7 +158,7 @@
             <div class="text-caption text-center">Line Size</div>
             <v-slider
               min="1"
-              max="500"
+              max="100"
               :color="colorPickerColor"
               thumb-color="grey darken-2"
               thumb-label
@@ -223,6 +235,17 @@
       content-class="tooltips"
     >
       <span> {{ item.name }}</span>
+    </v-tooltip>
+    <v-tooltip
+      v-model="isMeasuring"
+      :position-x="rulerToolTip.x"
+      :position-y="rulerToolTip.y"
+      bottom
+      absolute
+      color="rgba(0,139,139,0.6)"
+      content-class="tooltips"
+    >
+      <span> {{ rulerLength.toFixed(2) }}</span>
     </v-tooltip>
     <v-snackbar
       transition="dialog-transition"
@@ -309,6 +332,24 @@ export default {
     lightGroup: null,
     menuX: 0,
     menuY: 0,
+    isRulerTool: false,
+    rulerMeasurement: {
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0,
+    },
+    rulerLength: 0,
+    unscaledLength: 0,
+    rulerToolTip: {
+      x: 0,
+      y: 0,
+    },
+    rulerLine: {},
+    rulerCircle: {},
+    isMeasuring: false,
+    isCalibrating: false,
+    mapScale: 1,
     showActiveMenu: false,
     objectMenuItems: [
       { title: "Edit", action: "edit" },
@@ -322,6 +363,7 @@ export default {
       { title: "Add Light Source", action: "addlightsource" },
       { title: "Change Background", action: "changebackground" },
       { title: "Show All Names", action: "showallnames" },
+      { title: "Calibrate Ruler", action: "calibratebg" },
     ],
     clickData: {},
     isTokenAdded: false,
@@ -342,6 +384,14 @@ export default {
     },
     isMobile() {
       return this.$vuetify.breakpoint.xs;
+    },
+    distanceFromSelected() {
+      if (this.selected) {
+        let s = this.selected;
+        let m = this.mouse;
+        return this.calculateDistance(s.left, s.top, m.x, m.y) * this.mapScale;
+      }
+      return 0;
     },
     selected: {
       get() {
@@ -389,7 +439,7 @@ export default {
     },
     isOwner() {
       if (!this.user) return null;
-      return this.user.uid === this.stage.uid;
+      return this.user.uid === this.stage.owner;
     },
   },
   watch: {
@@ -405,9 +455,10 @@ export default {
     strokeWidth(width) {
       this.canvas.freeDrawingBrush.width = width;
     },
-    activeBackground() {
+    activeBackground(val) {
       this.detachListeners();
       this.attachListeners();
+      if (val.mapScale) this.mapScale = val.mapScale;
     },
     stage(val) {
       if (val) {
@@ -465,6 +516,13 @@ export default {
       if (action === "showallnames") {
         this.showAllNames();
       }
+      if (action === "calibratebg") {
+        this.isCalibrating = true;
+        this.isRulerTool = true;
+        this.snackbar.show = true;
+        this.snackbar.message = "approximate 5ft via mouse click and drag";
+        this.canvas.defaultCursor = "crosshair";
+      }
     },
     showAllNames() {
       let objects = this.canvas._objects;
@@ -481,6 +539,11 @@ export default {
           });
         }
       });
+    },
+    calculateDistance(x1, y1, x2, y2) {
+      return Math.sqrt(
+        Math.pow(x2 * 1 - x1 * 1, 2) + Math.pow(y2 * 1 - y1 * 1, 2)
+      );
     },
     hideAllNames() {
       let objects = this.canvas._objects;
@@ -551,8 +614,8 @@ export default {
       const marker = {
         originX: "center",
         originY: "center",
-        top: Number(this.mouse.y - 12),
-        left: Number(this.mouse.x),
+        top: this.mouse.y - 12,
+        left: this.mouse.x,
         width: 25,
         angle: 180,
         height: 25,
@@ -568,7 +631,7 @@ export default {
         notes: "",
         hasAccess: "",
         stage: this.stage.slug,
-        owner: this.stage.uid,
+        owner: this.stage.owner,
       };
       this.markerRef.push(marker).catch((error) => {
         console.log("marker: ", error.message);
@@ -581,10 +644,10 @@ export default {
         obj.set({
           originX: "center",
           originY: "center",
-          left: Number(this.mouse.x),
-          top: Number(this.mouse.y),
+          left: this.mouse.x,
+          top: this.mouse.y,
           stage: this.stage.slug,
-          owner: this.stage.uid,
+          owner: this.stage.owner,
           radius: (this.canvas.getHeight() / this.canvas.getZoom()) * 0.5,
           deletable: false,
         });
@@ -721,6 +784,7 @@ export default {
       if (this.canvas.isDragging) {
         var vpt = this.canvas.viewportTransform;
         if (opt.target) {
+          console.log("set false 1");
           opt.target.set({
             showToolTip: false,
           });
@@ -735,8 +799,34 @@ export default {
         this.canvas.lastPosX = e.clientX;
         this.canvas.lastPosY = e.clientY;
       }
-      this.mouse.x = pointer.x.toFixed();
-      this.mouse.y = pointer.y.toFixed();
+      if (this.isMeasuring) {
+        var vpt2 = this.canvas.viewportTransform;
+        this.rulerMeasurement.x2 = pointer.x;
+        this.rulerMeasurement.y2 = pointer.y;
+        let line = this.rulerMeasurement;
+        this.unscaledLength = this.calculateDistance(
+          line.x1,
+          line.y1,
+          line.x2,
+          line.y2
+        );
+        this.rulerLength = this.unscaledLength * this.mapScale;
+        var hHeight = this.$store.getters.headerHeight;
+        this.rulerToolTip.x = ((line.x1 + line.x2) / 2) * vpt2[0] + vpt2[4];
+        this.rulerToolTip.y =
+          ((line.y1 + line.y2) / 2) * vpt2[0] + vpt2[5] + hHeight;
+        this.rulerCircle.set({
+          radius: this.unscaledLength,
+        });
+        this.rulerLine.set({
+          x2: pointer.x,
+          y2: pointer.y,
+        });
+        this.rulerLine.setCoords();
+        this.canvas.renderAll();
+      }
+      this.mouse.x = pointer.x;
+      this.mouse.y = pointer.y;
     },
     throttle: _.throttle((func, opt, pointer) => {
       func(opt, pointer);
@@ -760,7 +850,7 @@ export default {
         const name = "";
         const token = {
           stage: this.stage.slug,
-          owner: this.stage.uid,
+          owner: this.stage.owner,
           name: name,
           url: url,
           angle: 0,
@@ -811,7 +901,8 @@ export default {
           scaleX: 1,
           scaleY: 1,
           stage: this.stage.slug,
-          owner: this.stage.uid,
+          owner: this.stage.owner,
+          mapScale: 1,
         };
         this.bgRef.push(background).catch((error) => {
           console.log("BG: ", error.message);
@@ -828,7 +919,7 @@ export default {
       this.canvas.clear();
     },
     attachListeners() {
-      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       this.tokenRef = db.database().ref(bgSlug + "/tokens");
       this.markerRef = db.database().ref(bgSlug + "/markers");
@@ -944,7 +1035,7 @@ export default {
             evented: false,
             boundary: true,
             stage: this.stage.slug,
-            owner: this.stage.uid,
+            owner: this.stage.owner,
             __id: "0",
             // fill: "rgba(255,127,39,1)",
             stroke: "rgba(34,177,76,1)",
@@ -961,7 +1052,7 @@ export default {
             evented: false,
             boundary: true,
             stage: this.stage.slug,
-            owner: this.stage.uid,
+            owner: this.stage.owner,
             __id: "0",
             // fill: "rgba(255,127,39,1)",
             stroke: "rgba(34,177,76,1)",
@@ -978,7 +1069,7 @@ export default {
             evented: false,
             boundary: true,
             stage: this.stage.slug,
-            owner: this.stage.uid,
+            owner: this.stage.owner,
             __id: "0",
             // fill: "rgba(255,127,39,1)",
             stroke: "rgba(34,177,76,1)",
@@ -995,7 +1086,7 @@ export default {
             evented: false,
             boundary: true,
             stage: this.stage.slug,
-            owner: this.stage.uid,
+            owner: this.stage.owner,
             __id: "0",
             // fill: "rgba(255,127,39,1)",
             stroke: "rgba(34,177,76,1)",
@@ -1163,7 +1254,7 @@ export default {
     reloadSession() {
       if (this.sessionRef) this.sessionRef.off();
       if (this.bgRef) this.bgRef.off();
-      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       this.sessionRef = db.database().ref(slug + "/session");
       this.bgRef = db.database().ref(slug + "/backgrounds");
       this.bgRef.on("value", (snapshot) => {
@@ -1173,10 +1264,20 @@ export default {
         Object.keys(data).forEach((key) => {
           let bgObject = { ...data[key] };
           bgObject.__id = key;
+          delete bgObject.tokens;
+          delete bgObject.drawings;
+          delete bgObject.markers;
+          delete bgObject.light;
           backgrounds.push(bgObject);
         });
         this.backgrounds = backgrounds;
       });
+      // this.bgRef.on("child_changed", (snapshot) => {
+      //   console.log("BG CHANGED");
+      //   if (this.activeBackground.__id === snapshot.key) {
+      //     if (snapshot.val().mapScale) this.mapScale == snapshot.val().mapScale;
+      //   }
+      // });
       this.sessionRef
         .child(1)
         .get()
@@ -1255,15 +1356,56 @@ export default {
           console.log("start drawing");
           return;
         }
-        if (
-          evt.button === 2 ||
-          evt.altKey === true ||
-          (this.isMobile && evt.button === 1)
-        ) {
+        if (evt.button === 2 || evt.altKey === true) {
           this.canvas.isDragging = true;
           this.canvas.selection = false;
           this.canvas.lastPosX = evt.clientX;
           this.canvas.lastPosY = evt.clientY;
+        }
+        if (
+          evt.button === 1 ||
+          this.isRulerTool ||
+          (evt.ctrlKey && evt.button === 0)
+        ) {
+          this.canvas.isDragging = false;
+          this.canvas.selection = false;
+          console.log("Start Measuring");
+          var pointer = this.canvas.getPointer();
+          var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+          this.rulerMeasurement.x1 = pointer.x;
+          this.rulerMeasurement.y1 = pointer.y;
+          this.rulerMeasurement.x2 = pointer.x;
+          this.rulerMeasurement.y2 = pointer.y;
+          var hHeight = this.$store.getters.headerHeight;
+          var vpt = this.canvas.viewportTransform;
+          this.rulerToolTip.x = pointer.x * vpt[0] + vpt[4];
+          this.rulerToolTip.y = pointer.y * vpt[0] + vpt[5] + hHeight;
+          this.rulerCircle = new fabric.Circle({
+            strokeWidth: 2,
+            stroke: "cyan",
+            opacity: 0.6,
+            fill: "transparent",
+            originX: "center",
+            originY: "center",
+            selectable: false,
+            evented: false,
+            left: pointer.x,
+            top: pointer.y,
+          });
+          this.rulerLine = new fabric.Line(points, {
+            strokeWidth: 2,
+            stroke: "cyan",
+            opacity: 0.6,
+            originX: "center",
+            originY: "center",
+            selectable: false,
+            evented: false,
+          });
+          this.canvas.add(this.rulerLine, this.rulerCircle);
+          this.rulerLine.setCoords();
+          this.rulerCircle.setCoords();
+          this.canvas.renderAll();
+          this.isMeasuring = true;
         }
       },
       "touch:drag": (opt) => {
@@ -1274,10 +1416,49 @@ export default {
         this.throttle(this.canvasMouseMove, opt, pointer);
       },
       "mouse:up": (opt) => {
+        console.log("mouse up");
         if (this.drawing) {
           console.log("stop drawing");
           this.drawing = false;
         }
+        if (this.isMeasuring) {
+          this.canvas.remove(this.rulerLine, this.rulerCircle);
+          this.rulerLine = {};
+          this.isMeasuring = false;
+          if (this.isCalibrating) {
+            let mapScale = 5 / this.unscaledLength;
+            this.isCalibrating = false;
+            this.isRulerTool = false;
+            this.canvas.defaultCursor = "default";
+            const bgObject = this.bgRef.child(this.activeBackground.__id);
+            const sessionObj = this.sessionRef.child("1/activeBackground");
+            bgObject
+              .update({
+                mapScale: mapScale,
+              })
+              .then(() => {
+                sessionObj
+                  .update({
+                    mapScale: mapScale,
+                  })
+                  .then(() => {
+                    this.snackbar.show = true;
+                    this.snackbar.message = "Calibration complete!";
+                  })
+                  .catch((error) => {
+                    this.snackbar.show = true;
+                    this.snackbar.message = "Calibration Failed!";
+                    console.log("mapScale Error - session", error);
+                  });
+              })
+              .catch((error) => {
+                this.snackbar.show = true;
+                this.snackbar.message = "Calibration Failed!";
+                console.log("mapScale Error - bg", error);
+              });
+          }
+        }
+
         if (this.isTokenAdded && opt.e.button !== 2) {
           let mouse = this.canvas.getPointer();
           this.tokenAdded.top = mouse.y;
@@ -1345,6 +1526,7 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
+          console.log("set false 2");
           e.target.set({
             scaleX: e.target.scaleX / 1.05,
             scaleY: e.target.scaleY / 1.05,
@@ -1404,7 +1586,7 @@ export default {
             scaleY: e.target.scaleY * 1.05,
           });
         }
-        this.canvas.renderAll();
+
         if (e.target.name) {
           var target = e.target;
           var vpt = this.canvas.viewportTransform;
@@ -1415,10 +1597,17 @@ export default {
             toolTipX: target.left * vpt[0] + vpt[4],
             toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
           });
+          this.canvas.renderAll();
+          console.log(
+            e.target.showToolTip,
+            e.target.toolTipX,
+            e.target.toolTipY
+          );
         }
       },
       "mouse:out": (e) => {
         if (e.target == null) return;
+        console.log("set false 3");
         e.target.set({
           showToolTip: false,
         });
@@ -1452,7 +1641,7 @@ export default {
         let drawing = newDrawing.toJSON();
         drawing.name = "";
         drawing.stage = this.stage.slug;
-        drawing.owner = this.stage.uid;
+        drawing.owner = this.stage.owner;
         drawing.notes = "";
         drawing.hasAccess = "";
         drawing.deletable = true;

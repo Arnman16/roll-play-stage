@@ -234,7 +234,7 @@ export default {
   },
   methods: {
     saveToken() {
-      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       if (this.selected.type === "path") {
         const drawingRef = db.database().ref(bgSlug + "/drawings");
@@ -260,7 +260,7 @@ export default {
       this.editTokenDialog = false;
     },
     setActiveBg(background) {
-      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       // const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       this.sessionRef = db.database().ref(slug + "/session");
       this.sessionRef.child(1).update({

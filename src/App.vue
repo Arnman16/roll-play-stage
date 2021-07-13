@@ -34,6 +34,7 @@
 import SidePanel from "./components/SidePanel";
 import AppBar from "./components/AppBar";
 import Login from "./components/Login";
+import { mapGetters} from "vuex";
 
 export default {
   name: "App",
@@ -43,18 +44,24 @@ export default {
     Login,
   },
   computed: {
-    user() {
-      return this.$store.getters.user;
-    },
-    loading() {
-      return this.$store.getters.loading;
-    },
+    ...mapGetters({
+      user: "user",
+      loading: "loading",
+      stage: "stage",
+      isAuthenticated: "isAuthenticated",
+    }),
+    // user() {
+    //   return this.$store.getters.user;
+    // },
+    // loading() {
+    //   return this.$store.getters.loading;
+    // },
     route() {
       return this.$route.name;
     },
-    stage() {
-      return this.$store.getters.stage;
-    },
+    // stage() {
+    //   return this.$store.getters.stage;
+    // },
     isMobile() {
       return this.$vuetify.breakpoint.xs;
     },

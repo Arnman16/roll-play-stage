@@ -21,6 +21,7 @@ const state = () => ({
     id: "",
   },
   user: null,
+  isAuthenticated: false,
   stage: null,
   stageSaved: false,
   activeUsers: [],
@@ -52,6 +53,9 @@ const getters = {
   },
   fetchingUser: (state) => {
     return state.fetchingUser;
+  },
+  isAuthenticated: (state) => {
+    return state.isAuthenticated;
   },
   stage: (state) => {
     return state.stage;
@@ -98,6 +102,12 @@ const actions = {
     return state.activeBackground;
   },
   setUser: ({ commit, state }, val) => {
+    if (!val) {
+      commit("SET_IS_AUTHENTICATED", false);
+    }
+    else if (val.uid) {
+      commit("SET_IS_AUTHENTICATED", true);
+    }
     commit("SET_USER", val);
     commit("SET_LOADING", false);
     return state.user;
@@ -107,10 +117,10 @@ const actions = {
     commit("SET_LOADING", false);
     return state.stage;
   },
-  signOut: ({ commit }) => {
+  signOut: ({ dispatch }) => {
     fb.auth.signOut()
       .then(() => {
-        commit("SET_USER", null);
+        dispatch("setUser", null);
         if (router.currentRoute.path !== "/") router.push("/");
       })
       .catch((error) => {
@@ -151,11 +161,17 @@ const actions = {
             displayName: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
+            slug: slug,
+          };
+          const newStage = {
+            owner: user.uid,
+            ownerName: user.displayName,
             pageName: pageName,
             slug: slug,
-          }
+          };
           fb.usersCollection.doc(user.uid).set(newUser).then(() => {
             dispatch("setUser", newUser);
+            fb.stagesCollection.add(newStage);
             const userStage = fb.db.database().ref(`users/${user.uid}/stages/${slug}`);
             const defaultRef = fb.db.database().ref("default");
             defaultRef.once("value")
@@ -193,13 +209,14 @@ const actions = {
   async fetchStage({ commit, state, dispatch }, slug) {
     commit("SET_LOADING", true);
     console.log("fetch stage");
-    await fb.usersCollection.where("slug", "==", slug).get()
+    await fb.stagesCollection.where("slug", "==", slug).get()
       .then((result) => {
         if (result.size === 0) {
           console.log('stage not found');
           dispatch("setStage", null);
         }
         else {
+          console.log('setting stage');
           let stage = result.docs[0].data()
           dispatch("setStage", stage);
           let user = state.user;
@@ -209,6 +226,9 @@ const actions = {
           }
         }
       })
+      .catch((error) => {
+        console.error("Error fetching stage", error);
+      });
   },
 }
 
@@ -234,6 +254,9 @@ const mutations = {
   },
   SET_USER: (state, val) => {
     state.user = val;
+  },
+  SET_IS_AUTHENTICATED: (state, val) => {
+    state.isAuthenticated = val;
   },
   SET_FETCHING_USER: (state, val) => {
     state.fetchingUser = val;

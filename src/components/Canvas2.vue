@@ -5,6 +5,7 @@
         @drop.prevent="addTokenDrag"
         @dragover.prevent
         v-on:dblclick="resetZoom"
+        class="fixed"
       >
         <canvas ref="can"></canvas>
         <div v-cloak @drop.prevent="bgDrag = true" @dragover.prevent>
@@ -27,62 +28,62 @@
             <!-- <canvas ref="mini" width="80" height="80"></canvas> -->
           </v-card>
         </div>
-        <v-speed-dial
-          fab
-          v-model="fab"
-          bottom
-          left
-          direction="right"
-          open-on-hover
-          transition="slide-y-reverse-transition"
-          style="position: fixed; bottom: 15px; left: 15px"
-        >
-          <template v-slot:activator>
-            <v-btn v-model="fab" :color="colorPickerColor" dark fab>
-              <v-icon v-if="fab"> mdi-close </v-icon>
-              <v-icon v-else> mdi-cog </v-icon>
-            </v-btn>
-          </template>
-          <v-btn fab dark small color="green">
-            <v-icon>mdi-pencil</v-icon>
-          </v-btn>
-          <v-btn fab dark small color="indigo">
-            <v-icon>mdi-plus</v-icon>
-          </v-btn>
-          <v-btn
-            v-show="objectSelected"
-            fab
-            dark
-            small
-            color="red"
-            @click="removeToken"
-          >
-            <v-icon>mdi-delete</v-icon>
-          </v-btn>
-          <v-btn
-            fab
-            dark
-            small
-            color="yellow darken-4"
-            @click="drawMode = !drawMode"
-          >
-            <v-icon>{{
-              drawMode ? "mdi-cursor-default-outline" : "mdi-brush"
-            }}</v-icon>
-          </v-btn>
-          <v-btn
-            fab
-            :color="colorPickerColor"
-            small
-            @click="colorPickerDialog = true"
-          >
-            <v-icon> mdi-palette</v-icon></v-btn
-          >
-        </v-speed-dial>
       </div>
     </v-container>
+    <v-speed-dial
+      fab
+      v-model="fab"
+      bottom
+      left
+      direction="right"
+      open-on-hover
+      transition="slide-y-reverse-transition"
+      style="position: absolute; bottom: 15px; left: 15px; z-index: 2;"
+    >
+      <template v-slot:activator>
+        <v-btn v-model="fab" :color="colorPickerColor" dark fab>
+          <v-icon v-if="fab"> mdi-close </v-icon>
+          <v-icon v-else> mdi-cog </v-icon>
+        </v-btn>
+      </template>
+      <v-btn fab dark small color="green">
+        <v-icon>mdi-pencil</v-icon>
+      </v-btn>
+      <v-btn fab dark small color="indigo">
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
+      <v-btn
+        v-show="objectSelected"
+        fab
+        dark
+        small
+        color="red"
+        @click="removeToken"
+      >
+        <v-icon>mdi-delete</v-icon>
+      </v-btn>
+      <v-btn
+        fab
+        dark
+        small
+        color="yellow darken-4"
+        @click="drawMode = !drawMode"
+      >
+        <v-icon>{{
+          drawMode ? "mdi-cursor-default-outline" : "mdi-brush"
+        }}</v-icon>
+      </v-btn>
+      <v-btn
+        fab
+        :color="colorPickerColor"
+        small
+        @click="colorPickerDialog = true"
+      >
+        <v-icon> mdi-palette</v-icon></v-btn
+      >
+    </v-speed-dial>
     <v-footer
-      style="z-index: 0"
+      style="z-index: 1"
       height="34"
       color="rgba(0,0,0,0.8)"
       fixed
@@ -871,7 +872,7 @@ export default {
             scaleY: data.scaleY,
             deletable: data.deletable,
             selectable: (this.isOwner && data.selectable) || hasAccess,
-            hasAccess: hasAccess,
+            // hasAccess: hasAccess,
             evented: data.evented,
             angle: data.angle,
             shadow: shadow,
@@ -884,6 +885,20 @@ export default {
             toolTipY: 0,
             originX: "center",
             originY: "center",
+            centeredScaling: true,
+            // hasBorders: false,
+            lockScalingX: this.isOwner ? false : true,
+            lockScalingY: this.isOwner ? false : true,
+          });
+          img.setControlsVisibility({
+            mt: false, // middle top disable
+            mb: false, // midle bottom
+            ml: false, // middle left
+            mr: false, // I think you get it
+            br: this.isOwner ? true : false,
+            bl: this.isOwner ? true : false,
+            tr: this.isOwner ? true : false,
+            tl: this.isOwner ? true : false,
           });
           img.setCoords();
         });
@@ -1166,7 +1181,7 @@ export default {
         .child(1)
         .get()
         .then((result) => {
-          if(!result.val()){
+          if (!result.val()) {
             return;
           }
           this.activeBackground = result.val().activeBackground;
@@ -1547,5 +1562,9 @@ export default {
 }
 .html {
   overflow-y: hidden;
+}
+.fixed {
+  position: fixed;
+  /* this fixes overflow y problem when window resizes */
 }
 </style>

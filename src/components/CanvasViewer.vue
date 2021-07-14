@@ -122,10 +122,12 @@
         >
           {{
             isMeasuring
-              ? rulerLength.toFixed(2)
-              : selected
-              ? distanceFromSelected.toFixed(2)
-              : "Distance in Ft"
+              ? rulerLength.toFixed(1)
+              : objectSelected
+              ? distanceFromSelected.toFixed(1)
+              : `${(mouse.x * mapScale).toFixed(1)}, ${(
+                  mouse.y * mapScale
+                ).toFixed(1)} (ft)`
           }}
         </v-col>
       </v-row>
@@ -265,7 +267,7 @@
 <script>
 import { auth, db } from "../db";
 import { fabric } from "fabric";
-import _ from "lodash";
+import { throttle } from "lodash";
 
 const lightSVG = require("../assets/svg/light.svg");
 
@@ -612,8 +614,8 @@ export default {
       const marker = {
         originX: "center",
         originY: "center",
-        top: Number(this.mouse.y - 12),
-        left: Number(this.mouse.x),
+        top: this.mouse.y - 12,
+        left: this.mouse.x,
         width: 25,
         angle: 180,
         height: 25,
@@ -642,8 +644,8 @@ export default {
         obj.set({
           originX: "center",
           originY: "center",
-          left: Number(this.mouse.x),
-          top: Number(this.mouse.y),
+          left: this.mouse.x,
+          top: this.mouse.y,
           stage: this.stage.slug,
           owner: this.stage.owner,
           radius: (this.canvas.getHeight() / this.canvas.getZoom()) * 0.5,
@@ -825,7 +827,7 @@ export default {
       this.mouse.x = pointer.x;
       this.mouse.y = pointer.y;
     },
-    throttle: _.throttle((func, opt, pointer) => {
+    throttle: throttle((func, opt, pointer) => {
       func(opt, pointer);
     }, 25),
     getLightFromId(id) {
@@ -839,8 +841,8 @@ export default {
       const url = e.dataTransfer.getData("Text");
       var img = new Image();
 
-      img.addEventListener("load", (ee) => {
-        console.log(ee);
+      img.addEventListener("load", () => {
+
         // const width = ee.target.naturalWidth;
         // const height = ee.target.naturalHeight;
         // const name = "token_" + Object.keys(this.tokens).length + "";
@@ -880,7 +882,7 @@ export default {
       });
     },
     addBg(e) {
-      console.log("add bg method");
+      // console.log("add bg method");
       const url = e.dataTransfer.getData("Text");
       var img = new Image();
       img.addEventListener("load", (ee) => {
@@ -1108,9 +1110,9 @@ export default {
         this.canvas.moveTo(this.lightGroup, -2);
         this.canvas.renderAll();
       });
-      this.lightRef.on("child_changed", (snapshot) => {
-        console.log(snapshot);
-      });
+      // this.lightRef.on("child_changed", (snapshot) => {
+      //   console.log(snapshot);
+      // });
       this.lightRef.on("child_removed", (snapshot) => {
         const key = snapshot.key;
         let light = this.getLightFromId(key);
@@ -1308,7 +1310,6 @@ export default {
     });
     this.reloadSession();
     const fullWidth = window.innerWidth;
-    console.log("HH", this.headerHeight);
     const fullHeight = window.innerHeight - this.headerHeight - 5;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     window.addEventListener("resize", () => {
@@ -1353,11 +1354,7 @@ export default {
           console.log("start drawing");
           return;
         }
-        if (
-          evt.button === 2 ||
-          evt.altKey === true ||
-          (this.isMobile && evt.button === 0)
-        ) {
+        if (evt.button === 2 || evt.altKey === true) {
           this.canvas.isDragging = true;
           this.canvas.selection = false;
           this.canvas.lastPosX = evt.clientX;
@@ -1421,14 +1418,10 @@ export default {
           console.log("stop drawing");
           this.drawing = false;
         }
-        // if (!opt.target) {
-        //   this.selected = false;
-        // }
         if (this.isMeasuring) {
           this.canvas.remove(this.rulerLine, this.rulerCircle);
           this.rulerLine = {};
           this.isMeasuring = false;
-          this.canvas.selection = true;
           if (this.isCalibrating) {
             let mapScale = 5 / this.unscaledLength;
             this.isCalibrating = false;
@@ -1520,7 +1513,7 @@ export default {
         this.throttle(this.canvasScrollZoom, opt);
       },
       "selection:created": (e) => {
-        console.log("object selected");
+        // console.log("object selected");
         this.objectSelected = true;
         const selection = this.canvas.getActiveObject();
         if (!selection) return;
@@ -1589,7 +1582,7 @@ export default {
             scaleY: e.target.scaleY * 1.05,
           });
         }
-        this.canvas.renderAll();
+
         if (e.target.name) {
           var target = e.target;
           var vpt = this.canvas.viewportTransform;
@@ -1600,6 +1593,7 @@ export default {
             toolTipX: target.left * vpt[0] + vpt[4],
             toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
           });
+          this.canvas.renderAll();
         }
       },
       "mouse:out": (e) => {

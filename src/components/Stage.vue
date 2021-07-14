@@ -1,8 +1,9 @@
 <template>
   <div>
     <div v-if="stage !== null">
-      <CanvasOwner v-if="isOwner" />
-      <CanvasViewer v-else />
+      <CanvasOwner />
+      <!-- <CanvasOwner v-if="isOwner" />
+      <CanvasViewer v-else /> -->
     </div>
     <v-container fluid fill-height v-else-if="!stage && !loading">
       <v-row justify="space-around">
@@ -20,15 +21,14 @@
 
 <script>
 import CanvasOwner from "./CanvasOwner.vue";
-import CanvasViewer from "./CanvasViewer.vue";
+// import CanvasViewer from "./CanvasViewer.vue";
 import { db, firebase, auth } from "../db";
 import { mapGetters } from "vuex";
-// import firebase from "firebase"
 export default {
   name: "Stage",
   components: {
     CanvasOwner,
-    CanvasViewer,
+    // CanvasViewer,
   },
   watch: {
     $route: {

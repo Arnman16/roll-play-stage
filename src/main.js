@@ -4,6 +4,12 @@ import router from './router'
 import vuetify from './plugins/vuetify';
 import store from './store';
 import { auth } from './db'
+import Vue2TouchEvents from 'vue2-touch-events'
+
+Vue.use(Vue2TouchEvents, {
+  namespace: 'touchy',
+  disableClick: true,
+})
 
 Vue.config.productionTip = false
 

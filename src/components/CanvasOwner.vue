@@ -2,6 +2,9 @@
   <div>
     <v-container fluid class="pa-0">
       <div
+        v-touchy:start="startHandler"
+        v-touchy:end="endHandler"
+        v-touchy:moving="movingHandler"
         @drop.prevent="addTokenDrag"
         @dragover.prevent
         v-on:dblclick="resetZoom"
@@ -96,7 +99,7 @@
     >
       <v-row class="py-0 mx-4">
         <v-col class="text-center text-caption pa-1 my-auto" cols="4"
-          >owner</v-col
+          ></v-col
         >
         <v-col
           class="text-center text-caption pa-1 my-auto"
@@ -267,7 +270,7 @@
 <script>
 import { auth, db } from "../db";
 import { fabric } from "fabric";
-import _ from "lodash";
+import { throttle } from "lodash";
 
 const lightSVG = require("../assets/svg/light.svg");
 
@@ -278,6 +281,14 @@ export default {
     addMarker: false,
     drawMode: false,
     eraseMode: false,
+    touch: false,
+    touchTime: 0,
+    isTouchZoom: false,
+    touchStartY: 0,
+    touchZoomPoint: {
+      x: 0,
+      y: 0,
+    },
     showToolTip: false,
     snackbar: {
       show: false,
@@ -467,6 +478,61 @@ export default {
     },
   },
   methods: {
+    startHandler(opt) {
+      this.touch = true;
+      // this.canvas.isTDragging = true;
+      this.canvas.selection = false;
+      let e = opt.touches[0];
+      if (opt.timeStamp - this.touchTime < 250) {
+        this.isTouchZoom = true;
+        this.touchStartY = e.clientY;
+        this.touchZoomPoint = {
+          x: e.clientX,
+          y: e.clientY,
+        };
+      }
+      this.touchTime = opt.timeStamp;
+      this.canvas.lastPosX = e.clientX;
+      this.canvas.lastPosY = e.clientY;
+
+      // console.log("touch start", opt);
+    },
+    movingHandler(opt) {
+      this.throttleLess(this.touchZoomPan, opt);
+    },
+    touchZoomPan(opt) {
+      if (this.objectSelected) return;
+      if (this.isRulerTool) return;
+      if (this.isTouchZoom) {
+        let e = opt.touches[0];
+        let delta = (this.touchStartY - e.clientY) * 8;
+        this.touchStartY = e.clientY;
+        var zoom = this.canvas.getZoom();
+        zoom *= 0.999 ** delta;
+        if (zoom > 20) zoom = 20;
+        if (zoom < 0.05) zoom = 0.05;
+        this.canvas.zoomToPoint(
+          { x: this.touchZoomPoint.x, y: this.touchZoomPoint.y },
+          zoom
+        );
+        return;
+      }
+      var vpt = this.canvas.viewportTransform;
+      this.canvas.selection = false;
+      let e = opt.touches[0];
+      this.showObjectMenu = false;
+      this.showBgMenu = false;
+      vpt[4] += e.clientX - this.canvas.lastPosX;
+      vpt[5] += e.clientY - this.canvas.lastPosY;
+      this.canvas.requestRenderAll();
+      this.canvas.lastPosX = e.clientX;
+      this.canvas.lastPosY = e.clientY;
+    },
+    endHandler() {
+      this.isTouchZoom = false;
+      this.touch = false;
+      // console.log("touch end");
+    },
     giveAccess(uid) {
       if (!auth.currentUser) return;
       let target = this.clickData.target;
@@ -738,6 +804,7 @@ export default {
         this.showAllNamesFlag = false;
       }
       var delta = opt.e.deltaY;
+      console.log("delta: ", delta);
       var zoom = this.canvas.getZoom();
       // const oldZoom = zoom;
       zoom *= 0.999 ** delta;
@@ -784,7 +851,6 @@ export default {
       if (this.canvas.isDragging) {
         var vpt = this.canvas.viewportTransform;
         if (opt.target) {
-          console.log("set false 1");
           opt.target.set({
             showToolTip: false,
           });
@@ -828,9 +894,12 @@ export default {
       this.mouse.x = pointer.x;
       this.mouse.y = pointer.y;
     },
-    throttle: _.throttle((func, opt, pointer) => {
+    throttle: throttle((func, opt, pointer) => {
       func(opt, pointer);
     }, 25),
+    throttleLess: throttle((func, opt, pointer) => {
+      func(opt, pointer);
+    }, 19),
     getLightFromId(id) {
       return this.lightGroup.getObjects().filter((obj) => obj.__id === id)[0];
     },
@@ -842,8 +911,7 @@ export default {
       const url = e.dataTransfer.getData("Text");
       var img = new Image();
 
-      img.addEventListener("load", (ee) => {
-        console.log(ee);
+      img.addEventListener("load", () => {
         // const width = ee.target.naturalWidth;
         // const height = ee.target.naturalHeight;
         // const name = "token_" + Object.keys(this.tokens).length + "";
@@ -883,7 +951,7 @@ export default {
       });
     },
     addBg(e) {
-      console.log("add bg method");
+      // console.log("add bg method");
       const url = e.dataTransfer.getData("Text");
       var img = new Image();
       img.addEventListener("load", (ee) => {
@@ -1111,9 +1179,9 @@ export default {
         this.canvas.moveTo(this.lightGroup, -2);
         this.canvas.renderAll();
       });
-      this.lightRef.on("child_changed", (snapshot) => {
-        console.log(snapshot);
-      });
+      // this.lightRef.on("child_changed", (snapshot) => {
+      //   console.log(snapshot);
+      // });
       this.lightRef.on("child_removed", (snapshot) => {
         const key = snapshot.key;
         let light = this.getLightFromId(key);
@@ -1311,7 +1379,6 @@ export default {
     });
     this.reloadSession();
     const fullWidth = window.innerWidth;
-    console.log("HH", this.headerHeight);
     const fullHeight = window.innerHeight - this.headerHeight - 5;
     this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
     window.addEventListener("resize", () => {
@@ -1416,7 +1483,6 @@ export default {
         this.throttle(this.canvasMouseMove, opt, pointer);
       },
       "mouse:up": (opt) => {
-        console.log("mouse up");
         if (this.drawing) {
           console.log("stop drawing");
           this.drawing = false;
@@ -1516,7 +1582,7 @@ export default {
         this.throttle(this.canvasScrollZoom, opt);
       },
       "selection:created": (e) => {
-        console.log("object selected");
+        // console.log("object selected");
         this.objectSelected = true;
         const selection = this.canvas.getActiveObject();
         if (!selection) return;
@@ -1526,7 +1592,6 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
-          console.log("set false 2");
           e.target.set({
             scaleX: e.target.scaleX / 1.05,
             scaleY: e.target.scaleY / 1.05,
@@ -1598,16 +1663,10 @@ export default {
             toolTipY: target.top * vpt[0] + vpt[5] + headerHeight - offsetY,
           });
           this.canvas.renderAll();
-          console.log(
-            e.target.showToolTip,
-            e.target.toolTipX,
-            e.target.toolTipY
-          );
         }
       },
       "mouse:out": (e) => {
         if (e.target == null) return;
-        console.log("set false 3");
         e.target.set({
           showToolTip: false,
         });

@@ -39,7 +39,7 @@
       bottom
       left
       direction="right"
-      open-on-hover
+      :open-on-hover="isMobile ? false : true"
       transition="slide-y-reverse-transition"
       style="position: absolute; bottom: 15px; left: 15px; z-index: 2"
     >
@@ -49,44 +49,49 @@
           <v-icon v-else> mdi-cog </v-icon>
         </v-btn>
       </template>
-      <v-btn fab dark small color="green">
-        <v-icon>mdi-pencil</v-icon>
-      </v-btn>
       <v-btn fab dark small color="indigo">
         <v-icon>mdi-plus</v-icon>
       </v-btn>
+      <v-btn
+        fab
+        :color="colorPickerColor"
+        small
+        @click.capture.stop="colorPickerDialog = true"
+      >
+        <v-icon> mdi-palette</v-icon></v-btn
+      >
+      <v-btn fab dark small color="transparent">
+        <v-icon></v-icon>
+      </v-btn>
+      <v-btn
+        fab
+        dark
+        small
+        :style="drawMode ? 'opacity: 1;' : 'opacity: 0.3;'"
+        color="yellow darken-4"
+        @click.capture.stop="(drawMode = !drawMode), (isRulerTool = false)"
+      >
+        <v-icon>mdi-brush</v-icon>
+      </v-btn>
+      <v-btn
+        fab
+        dark
+        small
+        :style="isRulerTool ? 'opacity: 1;' : 'opacity: 0.3;'"
+        color="purple"
+        @click.capture.stop="(isRulerTool = !isRulerTool), (drawMode = false)"
+        ><v-icon>mdi-ruler</v-icon></v-btn
+      >
       <v-btn
         v-show="objectSelected"
         fab
         dark
         small
         color="red"
-        @click="removeToken"
+        @click.capture.stop="removeToken"
       >
         <v-icon>mdi-delete</v-icon>
       </v-btn>
-      <v-btn
-        fab
-        dark
-        small
-        color="yellow darken-4"
-        @click="drawMode = !drawMode"
-      >
-        <v-icon>{{
-          drawMode ? "mdi-cursor-default-outline" : "mdi-brush"
-        }}</v-icon>
-      </v-btn>
-      <v-btn fab dark small color="purple" @click="isRulerTool = !isRulerTool"
-        ><v-icon>mdi-ruler</v-icon></v-btn
-      >
-      <v-btn
-        fab
-        :color="colorPickerColor"
-        small
-        @click="colorPickerDialog = true"
-      >
-        <v-icon> mdi-palette</v-icon></v-btn
-      >
     </v-speed-dial>
     <v-footer
       style="z-index: 1"
@@ -98,9 +103,7 @@
       v-if="!isMobile"
     >
       <v-row class="py-0 mx-4">
-        <v-col class="text-center text-caption pa-1 my-auto" cols="4"
-          ></v-col
-        >
+        <v-col class="text-center text-caption pa-1 my-auto" cols="4"></v-col>
         <v-col
           class="text-center text-caption pa-1 my-auto"
           cols="3"
@@ -331,6 +334,7 @@ export default {
       left: "0px",
     },
     changing: false,
+    showDial: false,
     drawingMode: "add",
     showAllNamesFlag: false,
     pencilWidth: 25,
@@ -503,6 +507,7 @@ export default {
     touchZoomPan(opt) {
       if (this.objectSelected) return;
       if (this.isRulerTool) return;
+      if (this.drawMode) return;
       if (this.isTouchZoom) {
         let e = opt.touches[0];
         let delta = (this.touchStartY - e.clientY) * 8;

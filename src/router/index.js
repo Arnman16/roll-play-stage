@@ -9,6 +9,7 @@ import Stage from "@/components/Stage.vue";
 import Stages from "@/components/Stages.vue";
 import Saved from "@/components/Saved.vue";
 import NotFound from "@/components/NotFound.vue";
+import Chat from "@/components/Chat.vue";
 // import Unpublished from "@/components/Unpublished.vue";
 // import UnpublishedPost from "@/components/UnpublishedPost.vue";
 // import Edit from "@/components/Edit.vue";
@@ -88,6 +89,11 @@ const routes = [
     name: "Signup",
     component: Signup,
     beforeEnter: ifNotAuthenticated,
+  },
+  {
+    path: "/tests",
+    name: "Tests",
+    component: Chat,
   },
   {
     path: "/*",

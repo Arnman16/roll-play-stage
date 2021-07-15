@@ -5,6 +5,7 @@
         v-touchy:start="startHandler"
         v-touchy:end="endHandler"
         v-touchy:moving="movingHandler"
+        v-touchy:tap="tapHandler"
         @drop.prevent="addTokenDrag"
         @dragover.prevent
         v-on:dblclick="resetZoom"
@@ -39,7 +40,6 @@
       bottom
       left
       direction="right"
-      :open-on-hover="isMobile ? false : true"
       transition="slide-y-reverse-transition"
       style="position: absolute; bottom: 15px; left: 15px; z-index: 2"
     >
@@ -49,9 +49,54 @@
           <v-icon v-else> mdi-cog </v-icon>
         </v-btn>
       </template>
-      <v-btn fab dark small color="indigo">
-        <v-icon>mdi-plus</v-icon>
-      </v-btn>
+      <v-menu
+        :value="showAddMenu"
+        open-on-hover
+        close-delay="200"
+        top
+        offset-y
+        content-class="elevation-0"
+      >
+        <template v-slot:activator="{ on, attrs }">
+          <v-btn
+            v-bind="attrs"
+            v-on="on"
+            @click.capture.stop="showAddMenu = !showAddMenu"
+            fab
+            dark
+            small
+            color="indigo"
+          >
+            <v-icon>mdi-plus</v-icon>
+          </v-btn>
+        </template>
+        <v-list color="transparent">
+          <v-list-item @click="1" flat class="pa-0">
+            <v-list-item-action>
+              <v-btn fab small color="blue">
+                <v-icon>mdi-square</v-icon>
+              </v-btn>
+            </v-list-item-action>
+            <v-list-item-title>Background</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="1" flat class="pa-0">
+            <v-list-item-action>
+              <v-btn fab small color="yellow darken-2">
+                <v-icon>mdi-triangle</v-icon>
+              </v-btn>
+            </v-list-item-action>
+            <v-list-item-title>Marker</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="1" flat class="pa-0">
+            <v-list-item-action>
+              <v-btn fab small color="red">
+                <v-icon>mdi-circle</v-icon>
+              </v-btn>
+            </v-list-item-action>
+            <v-list-item-title>Token</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <v-btn
         fab
         :color="colorPickerColor"
@@ -60,9 +105,77 @@
       >
         <v-icon> mdi-palette</v-icon></v-btn
       >
-      <v-btn fab dark small color="transparent">
-        <v-icon></v-icon>
-      </v-btn>
+      <v-menu
+        open-on-hover
+        top
+        :value="showDice"
+        offset-y
+        close-delay="200"
+        nudge-left="10"
+        content-class="elevation-0"
+        close-on-click
+      >
+        <template v-slot:activator="{ on, attrs }">
+          <v-btn
+            v-bind="attrs"
+            v-on="on"
+            @click.capture.stop="showDice = !showDice"
+            fab
+            light
+            small
+            color="white"
+          >
+            <v-icon>mdi-dice-3-outline</v-icon>
+          </v-btn>
+        </template>
+        <v-list color="transparent">
+          <v-list-item
+            v-for="(die, index) in dice"
+            :key="index"
+            flat
+            class="pa-0"
+          >
+            <v-list-item-action class="ma-1">
+              <v-btn
+                @click.capture.stop="
+                  rollDice(`1D${die.icon.total}`, die.icon.total)
+                "
+                fab
+                :color="index % 2 === 0 ? 'red darken-4' : 'blue-grey darken-4'"
+              >
+                <v-icon large>{{ die.icon.text }}</v-icon>
+              </v-btn>
+            </v-list-item-action>
+            <v-list-item-action class="ma-1">
+              <v-btn
+                @click.capture.stop="rollDice(die.two.text, die.two.total)"
+                fab
+                small
+                :color="index % 2 === 0 ? 'red darken-4' : 'blue-grey darken-4'"
+                >{{ die.two.text }}</v-btn
+              >
+            </v-list-item-action>
+            <v-list-item-action class="ma-1">
+              <v-btn
+                @click.capture.stop="rollDice(die.three.text, die.three.total)"
+                fab
+                small
+                :color="index % 2 === 0 ? 'red darken-4' : 'blue-grey darken-4'"
+                >{{ die.three.text }}
+              </v-btn>
+            </v-list-item-action>
+            <v-list-item-action class="ma-1">
+              <v-btn
+                @click.capture.stop="rollDice(die.four.text, die.four.total)"
+                fab
+                small
+                :color="index % 2 === 0 ? 'red darken-4' : 'blue-grey darken-4'"
+                >{{ die.four.text }}
+              </v-btn>
+            </v-list-item-action>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <v-btn
         fab
         dark
@@ -255,7 +368,7 @@
     </v-tooltip>
     <v-snackbar
       transition="dialog-transition"
-      text
+      color="rgba(0,0,0,0.6)"
       v-model="snackbar.show"
       timeout="6000"
     >
@@ -267,11 +380,26 @@
         </v-row>
       </v-container>
     </v-snackbar>
+    <v-snackbar
+      transition="dialog-transition"
+      rounded
+      color="rgba(0,0,0,0.6)"
+      v-model="shortSnackbar.show"
+      timeout="2000"
+    >
+      <v-container class="ma-0 pa-0" fluid fill-height>
+        <v-row justify="space-around" align="center">
+          <v-col class="ma-0 pa-0" align="center">
+            <span class="text--primary">{{ shortSnackbar.message }}</span>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-snackbar>
   </div>
 </template>
 
 <script>
-import { auth, db } from "../db";
+import { auth, db, firebase } from "../db";
 import { fabric } from "fabric";
 import { throttle } from "lodash";
 
@@ -283,8 +411,119 @@ export default {
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
     drawMode: false,
+    dice: [
+      {
+        icon: {
+          text: "mdi-dice-d20",
+          total: 20,
+        },
+        two: {
+          text: "2D20",
+          total: 40,
+        },
+        three: {
+          text: "3D20",
+          total: 60,
+        },
+        four: {
+          text: "4D20",
+          total: 80,
+        },
+      },
+      {
+        icon: {
+          text: "mdi-dice-d12",
+          total: 12,
+        },
+        two: {
+          text: "2D12",
+          total: 24,
+        },
+        three: {
+          text: "3D12",
+          total: 36,
+        },
+        four: {
+          text: "4D12",
+          total: 48,
+        },
+      },
+      {
+        icon: {
+          text: "mdi-dice-d10",
+          total: 10,
+        },
+        two: {
+          text: "2D10",
+          total: 20,
+        },
+        three: {
+          text: "3D10",
+          total: 30,
+        },
+        four: {
+          text: "4D10",
+          total: 40,
+        },
+      },
+      {
+        icon: {
+          text: "mdi-dice-d8",
+          total: 8,
+        },
+        two: {
+          text: "2D8",
+          total: 16,
+        },
+        three: {
+          text: "3D8",
+          total: 24,
+        },
+        four: {
+          text: "4D8",
+          total: 32,
+        },
+      },
+      {
+        icon: {
+          text: "mdi-dice-d6",
+          total: 6,
+        },
+        two: {
+          text: "2D6",
+          total: 12,
+        },
+        three: {
+          text: "3D6",
+          total: 18,
+        },
+        four: {
+          text: "4D6",
+          total: 24,
+        },
+      },
+      {
+        icon: {
+          text: "mdi-dice-d4",
+          total: 4,
+        },
+        two: {
+          text: "2D4",
+          total: 20,
+        },
+        three: {
+          text: "3D4",
+          total: 12,
+        },
+        four: {
+          text: "4D4",
+          total: 16,
+        },
+      },
+    ],
     eraseMode: false,
     touch: false,
+    isTap: false,
     touchTime: 0,
     isTouchZoom: false,
     touchStartY: 0,
@@ -294,6 +533,10 @@ export default {
     },
     showToolTip: false,
     snackbar: {
+      show: false,
+      message: "",
+    },
+    shortSnackbar: {
       show: false,
       message: "",
     },
@@ -335,6 +578,8 @@ export default {
     },
     changing: false,
     showDial: false,
+    showDice: false,
+    showAddMenu: false,
     drawingMode: "add",
     showAllNamesFlag: false,
     pencilWidth: 25,
@@ -484,6 +729,8 @@ export default {
   methods: {
     startHandler(opt) {
       this.touch = true;
+      this.showDice = false;
+      this.showAddMenu = false;
       // this.canvas.isTDragging = true;
       this.canvas.selection = false;
       let e = opt.touches[0];
@@ -503,6 +750,9 @@ export default {
     },
     movingHandler(opt) {
       this.throttleLess(this.touchZoomPan, opt);
+    },
+    tapHandler() {
+      this.isTap = true;
     },
     touchZoomPan(opt) {
       if (this.objectSelected) return;
@@ -536,6 +786,7 @@ export default {
     endHandler() {
       this.isTouchZoom = false;
       this.touch = false;
+      console.log("touch over");
       // console.log("touch end");
     },
     giveAccess(uid) {
@@ -984,6 +1235,42 @@ export default {
       img.src = url;
       this.bgDrag = false;
     },
+    rollDice(roll) {
+      var dice = roll.split("D");
+      var rolls = dice[0];
+      var die = dice[1];
+      var sum = 0;
+      var results = [];
+      while (rolls > 0) {
+        let result = Math.floor(Math.random() * die) + 1;
+        sum += result;
+        results.push(result);
+        rolls--;
+      }
+      let text = `${roll} rolled!\nResults: ${results}\nTotal: ${sum}`;
+      this.snackbar.show = true;
+      this.snackbar.message = text;
+
+      if (!auth.currentUser) return;
+      let message = {
+        message: text,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        uid: this.user.uid,
+        name: this.user.displayName.split(" ")[0],
+        diceRoll: true,
+      };
+
+      const path = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const chatPath = `${path}/chat`;
+
+      db.database()
+        .ref(chatPath)
+        .push(message, (error) => {
+          if (error) {
+            console.log("chat tx error", error);
+          }
+        });
+    },
     detachListeners() {
       if (this.tokenRef) this.tokenRef.off();
       if (this.markerRef) this.markerRef.off();
@@ -1400,24 +1687,28 @@ export default {
       if (e.key == "Delete") {
         this.removeToken();
       }
-      if (e.key == "b") {
+      if (e.key == "b" && e.altKey) {
         this.drawMode = !this.drawMode;
       }
-      if (e.key == "c") {
+      if (e.key == "p" && e.altKey) {
+        console.log(e);
         this.colorPickerDialog = !this.colorPickerDialog;
       }
-      if (e.key == "a") {
+      if (e.key == "a" && e.altKey) {
         // select alla
       }
-      if (e.key == "l") {
+      if (e.key == "l" && e.altKey) {
         this.createLightSource();
       }
-      if (e.key == "k") {
+      if (e.key == "k" && e.altKey) {
         this.editLightMode();
       }
     });
     this.canvas.on({
       "mouse:down": (opt) => {
+        if (this.touch) {
+          console.log("TOUCH ME BABY", opt.e);
+        }
         var evt = opt.e;
         if (this.showAllNamesFlag) {
           this.hideAllNames();
@@ -1488,6 +1779,13 @@ export default {
         this.throttle(this.canvasMouseMove, opt, pointer);
       },
       "mouse:up": (opt) => {
+        if (this.isTap) {
+          if (opt.target) {
+            this.shortSnackbar.show = true;
+            this.shortSnackbar.message = opt.target.name;
+          }
+          this.isTap = false;
+        }
         if (this.drawing) {
           console.log("stop drawing");
           this.drawing = false;
@@ -1587,7 +1885,7 @@ export default {
         this.throttle(this.canvasScrollZoom, opt);
       },
       "selection:created": (e) => {
-        // console.log("object selected");
+        console.log("object selected");
         this.objectSelected = true;
         const selection = this.canvas.getActiveObject();
         if (!selection) return;

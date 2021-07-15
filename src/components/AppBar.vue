@@ -1,6 +1,7 @@
 <template>
   <v-app-bar
     app
+    flat
     color="rgba(26,26,26,1)"
     class="px-0"
     dark
@@ -79,7 +80,7 @@
       <div v-else>
         <v-menu offset-y open-on-hover tile nudge-bottom="7" close-delay="100">
           <template v-slot:activator="{ on, attrs }">
-            <v-btn elevation="40" v-bind="attrs" v-on="on" class="ma-1">
+            <v-btn elevation="40" v-bind="attrs" v-on="on" class="mx-5">
               <v-avatar elevation="40" size="32"
                 ><v-img
                   :alt="user.displayName.charAt(0)"

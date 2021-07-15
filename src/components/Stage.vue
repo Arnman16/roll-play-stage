@@ -95,7 +95,7 @@ export default {
     },
     setUserStatus() {
       if (auth.currentUser) {
-        const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+        const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
         const viewersSlug = `${slug}/viewers/`;
         // console.log(auth.currentUser);
         // Fetch the current user's ID from Firebase Authentication.
@@ -160,7 +160,7 @@ export default {
     },
     setUserWatchers() {
       this.activeUsers = [];
-      const slug = `users/${this.stage.uid}/stages/${this.stage.slug}`;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const viewersSlug = `${slug}/viewers`;
       if (this.stageUsersRef) this.stageUsersRef.off();
 

@@ -1,17 +1,12 @@
 <template>
   <v-container fluid fill-height class="posts">
-      <v-container
-    fluid
-    :class="isMobile ? 'ma-0 pa-1' : 'pa-2'"
-    class="content-home"
-  >
-    <div class="ma-5 text-center text-h4">Saved Stages</div>
-    <div class="ma-5 text-center text-primary">
-      Saved stages aren't operational yet.
-      <br>
-      Check 'em all out: 
-    </div>
-      </v-container>
+    <v-container
+      fluid
+      :class="isMobile ? 'ma-0 pa-1' : 'pa-2'"
+      class="content-home"
+    >
+      <div class="ma-5 text-center text-h4">Saved Stages</div>
+    </v-container>
     <v-container fluid :class="isMobile ? 'ma-0 pa-0' : 'ma-2'">
       <transition-group name="list" tag="div" class="py-0">
         <StageCard
@@ -31,7 +26,7 @@
 
 <script>
 import StageCard from "./StageCard.vue";
-import { usersCollection } from "../db";
+import { fs } from "../db";
 export default {
   name: "Saved",
   components: {
@@ -49,6 +44,9 @@ export default {
         this.$store.commit("SET_LOADING", val);
       },
     },
+    user() {
+      return this.$store.getters.user;
+    },
   },
   data() {
     return {
@@ -57,7 +55,8 @@ export default {
   },
   methods: {
     getStages() {
-      usersCollection.get().then((snapshot) => {
+      const savedStages = fs.collection(`users/${this.user.uid}/savedStages`);
+      savedStages.get().then((snapshot) => {
         snapshot.forEach((doc) => {
           let stage = doc.data();
           this.stages.push(stage);

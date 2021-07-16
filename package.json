@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "core-js": "^3.6.5",
+    "dayjs": "^1.10.6",
     "fabric": "^4.3.1",
     "firebase": "^8.2.10",
     "firebaseui": "^4.8.0",

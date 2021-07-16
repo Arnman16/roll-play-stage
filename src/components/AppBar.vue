@@ -177,7 +177,7 @@ export default {
         return this.$store.getters.stageSaved;
       },
       set(isSaved) {
-        this.$store.commit("SET_STAGE_SAVED", isSaved);
+        this.$store.dispatch("setStageSaved", isSaved);
       },
     },
   },

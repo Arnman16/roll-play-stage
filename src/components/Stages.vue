@@ -1,10 +1,11 @@
 <template>
   <v-container fluid fill-height class="posts">
+    <div class="ma-5 text-center text-h4">Stages - All</div>
     <v-container fluid :class="isMobile ? 'ma-0 pa-0' : 'ma-2'">
       <transition-group name="list" tag="div" class="py-0">
         <StageCard
-          created="1625773730209"
           v-for="stage in stages"
+          :created="stage.created"
           :key="stage.slug"
           :slug="'/stages/' + stage.slug"
           :name="stage.pageName"
@@ -20,6 +21,7 @@
 <script>
 import StageCard from "./StageCard.vue";
 import { stagesCollection } from "../db";
+
 export default {
   name: "Stage",
   components: {

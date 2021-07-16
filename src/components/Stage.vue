@@ -68,7 +68,7 @@ export default {
         return this.$store.getters.stageSaved;
       },
       set(val) {
-        this.$store.commit("SET_STAGE_SAVED", val);
+        this.$store.dispatch("setStageSaved", val);
       },
     },
     slug() {

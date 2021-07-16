@@ -17,12 +17,12 @@
         <v-tab style="text-transform: none"><v-icon>mdi-message</v-icon></v-tab>
       </v-tabs>
     </v-toolbar>
-    <v-container fluid fill-height style="display:block;" class="align-start pa-0">
-      <v-tabs-items class="transparent" v-model="tabModel" style="height: 100%">
+    <v-container fluid fill-height style="display: block;" class="align-start pa-0">
+      <v-tabs-items class="transparent" v-model="tabModel" style="display: block; height: 100%;">
         <v-tab-item style="height: 100%">
           <StageInfo />
         </v-tab-item>
-        <v-tab-item style="height: 100%; width: 100%">
+        <v-tab-item style="display: block; height: 100%;">
           <Chat />
         </v-tab-item>
       </v-tabs-items>

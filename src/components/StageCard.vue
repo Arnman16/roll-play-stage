@@ -22,10 +22,8 @@
             <!-- <v-divider class="ma-3"></v-divider> -->
             <span class="text-caption my-date">{{ created | formatDate }}</span>
           </v-list-item-content>
-          <v-list-item-avatar tile size="120" color="black"
-            ><v-img
-              :src="thumbnail ? thumbnail : 'https://i.imgur.com/2UgUzFV.png'"
-            ></v-img
+          <v-list-item-avatar tile size="120"
+            ><v-img :src="thumbnail ? thumbnail : logo"></v-img
           ></v-list-item-avatar>
         </v-list-item>
       </v-card>
@@ -34,6 +32,7 @@
 </template>
 
 <script>
+const logo = require("../assets/logo.svg");
 import moment from "moment";
 export default {
   name: "StageCard",
@@ -49,6 +48,7 @@ export default {
       if (!val) {
         return "-";
       }
+      if (val.length < 12) val *= 1000;
       let date = moment(val, "x").format("DD MMM YYYY hh:mm a");
       return moment(date).fromNow();
     },
@@ -70,7 +70,9 @@ export default {
     },
   },
   data() {
-    return {};
+    return {
+      logo: logo,
+    };
   },
   methods: {},
 };

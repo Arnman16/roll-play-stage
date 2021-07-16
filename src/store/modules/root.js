@@ -136,6 +136,29 @@ const actions = {
     }
     else console.log("oops");
   },
+  async setStageSaved({ state, commit }, isSaved) {
+    console.log('set stage saved', isSaved);
+    const saveFolder = fb.fs.collection(`users/${state.user.uid}/savedStages`);
+    if (isSaved) {
+      saveFolder.doc(state.stage.slug).set(state.stage).then(() => {
+        console.log('Stage saved')
+        commit('SET_STAGE_SAVED', true);
+      })
+        .catch(error => {
+          console.log("error saving stage", error);
+        })
+    }
+    else {
+      const doc = saveFolder.doc(state.stage.slug)
+      const stage = await doc.get();
+      if (!stage) return;
+      doc.delete()
+        .then(() => { commit('SET_STAGE_SAVED', false) })
+        .catch(error => {
+          console.log("error removing stage from saved", error);
+        })
+    }
+  },
   async fetchUser({ commit, dispatch }, user) {
     commit("SET_LOADING", true);
     console.log('fetch user');
@@ -146,6 +169,7 @@ const actions = {
         if (!thisUser.exists) {
           let pageName = randomPageName;
           let slug = slugify(pageName);
+          let timestamp = fb.firebase.database.ServerValue.TIMESTAMP;
           // when I have to worry about dupes later
           // fb.usersCollection.where("slug", "==", slug).get()
           //   .then((result) => {
@@ -162,12 +186,14 @@ const actions = {
             email: user.email,
             photoURL: user.photoURL,
             slug: slug,
+            created: timestamp,
           };
           const newStage = {
             owner: user.uid,
             ownerName: user.displayName,
             pageName: pageName,
             slug: slug,
+            created: timestamp,
           };
           fb.usersCollection.doc(user.uid).set(newUser).then(() => {
             dispatch("setUser", newUser);
@@ -217,7 +243,8 @@ const actions = {
         }
         else {
           console.log('setting stage');
-          let stage = result.docs[0].data()
+          let stage = result.docs[0].data();
+          stage.id = result.docs[0].id;
           dispatch("setStage", stage);
           let user = state.user;
           if (user) {

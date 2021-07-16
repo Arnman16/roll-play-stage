@@ -1,5 +1,5 @@
 <template>
-  <v-container class="align-start pa-0 ma-0 ba-0">
+  <v-container class="align-start pa-0 ma-0 ba-0" fill-height style="display: block;">
     <v-container fluid class="align-start chat-area" id="chat-area">
       <div style="height: 100px; opacity: 0.15" class="text-center">
         End of chat
@@ -31,10 +31,10 @@
         >
           <v-card
             flat
-            tile
+            
             :color="msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'"
           >
-            <v-card-text class="mx-auto pa-1 text-block">
+            <v-card-text class="mx-auto py-1 text-block px-2">
               {{ msg.message }}
             </v-card-text>
           </v-card>
@@ -160,7 +160,8 @@ export default {
   flex-direction: column;
 }
 .chat-area {
-  height: 75vh;
+  display: block;
+  height: 80%;
   width: 100%;
   overflow-y: scroll !important;
   overscroll-behavior-y: contain;

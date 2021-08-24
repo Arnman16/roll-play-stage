@@ -1,7 +1,7 @@
 // FLags Module
 
 const state = () => ({
-  drawer: true,
+  drawer: false,
   showLogin: false,
 })
 

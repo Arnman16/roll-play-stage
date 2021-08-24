@@ -76,7 +76,7 @@
           ></v-img
         ></v-avatar>
       </v-btn>
-      <v-btn v-if="!user" @click="showLogin = true">Sign In</v-btn>
+      <v-btn v-if="!user" loading="loading" @click="showLogin = true" class="mx-5">Sign In</v-btn>
       <div v-else>
         <v-menu offset-y open-on-hover tile nudge-bottom="7" close-delay="100">
           <template v-slot:activator="{ on, attrs }">

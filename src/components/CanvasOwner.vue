@@ -39,9 +39,10 @@
       v-model="fab"
       bottom
       left
+      fixed
       direction="right"
       transition="slide-y-reverse-transition"
-      style="position: absolute; bottom: 15px; left: 15px; z-index: 2"
+      style="position: fixed; bottom: 15px; left: 15px; z-index: 2"
     >
       <template v-slot:activator>
         <v-btn v-model="fab" :color="colorPickerColor" dark fab>
@@ -411,6 +412,8 @@ export default {
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
     drawMode: false,
+    tapCount: 0,
+    tapTime: 0,
     dice: [
       {
         icon: {
@@ -751,8 +754,16 @@ export default {
     movingHandler(opt) {
       this.throttleLess(this.touchZoomPan, opt);
     },
-    tapHandler() {
-      this.isTap = true;
+    tapHandler(opt) {
+      this.isTap = true; // for tapping objects to get name snackbar msg
+      if (opt.timeStamp - this.tapTime < 200) this.tapCount++;
+      else this.tapCount = 0;
+      if (this.tapCount >= 2) {
+        // opens side drawer on a touch triple tap
+        this.$store.commit("SET_DRAWER", true);
+        this.tapCount = 0;
+      }
+      this.tapTime = opt.timeStamp;
     },
     touchZoomPan(opt) {
       if (this.objectSelected) return;
@@ -786,7 +797,6 @@ export default {
     endHandler() {
       this.isTouchZoom = false;
       this.touch = false;
-      console.log("touch over");
       // console.log("touch end");
     },
     giveAccess(uid) {
@@ -1204,7 +1214,13 @@ export default {
         this.canvas.renderAll.bind(this.canvas);
         this.canvas.renderAll();
         this.resetZoom();
-      });
+      })
+        .then(() => {
+          console.log("LOADED?");
+        })
+        .catch((error) => {
+          console.log("SetBG Error: ", error);
+        });
     },
     addBg(e) {
       // console.log("add bg method");
@@ -1615,7 +1631,7 @@ export default {
       if (this.sessionRef) this.sessionRef.off();
       if (this.bgRef) this.bgRef.off();
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
-      this.sessionRef = db.database().ref(slug + "/session");
+      this.sessionRef = db.database().ref(slug + "/session/1");
       this.bgRef = db.database().ref(slug + "/backgrounds");
       this.bgRef.on("value", (snapshot) => {
         const data = snapshot.val();
@@ -1639,8 +1655,7 @@ export default {
       //   }
       // });
       this.sessionRef
-        .child(1)
-        .get()
+        .once("value")
         .then((result) => {
           if (!result.val()) {
             return;
@@ -1648,12 +1663,21 @@ export default {
           this.activeBackground = result.val().activeBackground;
           this.setBG(this.activeBackground.url);
           // this.attachListeners();
+        })
+        .catch((error) => {
+          console.log("Get Session Error: ", error);
         });
-      this.sessionRef.on("child_changed", (snapshot) => {
-        console.log("sessionRef child_changed");
-        this.setBG(snapshot.val().activeBackground.url);
-        this.activeBackground = snapshot.val().activeBackground;
-      });
+      this.sessionRef.on(
+        "child_changed",
+        (snapshot) => {
+          console.log("sessionRef child_changed");
+          this.setBG(snapshot.val().activeBackground.url);
+          this.activeBackground = snapshot.val().activeBackground;
+        },
+        (error) => {
+          console.log(error);
+        }
+      );
       // this.sessionRef.on("child_added", (snapshot) => {
       //   console.log("sessionRef child_added");
       //   this.setBG(snapshot.val().activeBackground.url);
@@ -1734,6 +1758,7 @@ export default {
           this.canvas.selection = false;
           console.log("Start Measuring");
           var pointer = this.canvas.getPointer();
+          var zoom = this.canvas.getZoom();
           var points = [pointer.x, pointer.y, pointer.x, pointer.y];
           this.rulerMeasurement.x1 = pointer.x;
           this.rulerMeasurement.y1 = pointer.y;
@@ -1744,7 +1769,7 @@ export default {
           this.rulerToolTip.x = pointer.x * vpt[0] + vpt[4];
           this.rulerToolTip.y = pointer.y * vpt[0] + vpt[5] + hHeight;
           this.rulerCircle = new fabric.Circle({
-            strokeWidth: 2,
+            strokeWidth: 2 / zoom,
             stroke: "cyan",
             opacity: 0.6,
             fill: "transparent",
@@ -1756,7 +1781,7 @@ export default {
             top: pointer.y,
           });
           this.rulerLine = new fabric.Line(points, {
-            strokeWidth: 2,
+            strokeWidth: 2 / zoom,
             stroke: "cyan",
             opacity: 0.6,
             originX: "center",

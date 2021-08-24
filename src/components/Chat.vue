@@ -1,5 +1,9 @@
 <template>
-  <v-container class="align-start pa-0 ma-0 ba-0" fill-height style="display: block;">
+  <v-container
+    class="align-start pa-0 ma-0 ba-0"
+    fill-height
+    style="display: block"
+  >
     <v-container fluid class="align-start chat-area" id="chat-area">
       <div style="height: 100px; opacity: 0.15" class="text-center">
         End of chat
@@ -31,7 +35,6 @@
         >
           <v-card
             flat
-            
             :color="msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'"
           >
             <v-card-text class="mx-auto py-1 text-block px-2">
@@ -50,17 +53,19 @@
       </v-row>
       <div id="chatEnd"></div>
     </v-container>
-    <v-textarea
-      solo
-      height="12vh"
-      v-model="textArea"
-      flat
-      outlined
-      background-color="rgba(29, 29, 32, 0.7)"
-      color="rgba(255, 255, 255, 0.2)"
-      class="pa-2"
-      v-on:keyup.enter="sendMessage"
-    ></v-textarea>
+      <v-textarea
+        solo
+        v-model="textArea"
+        flat
+        outlined
+        fill-width
+        hide-details
+        rows="3"
+        background-color="rgba(29, 29, 32, 0.7)"
+        color="rgba(255, 255, 255, 0.2)"
+        class="px-2 pt-2 pb-0 text-area"
+        v-on:keyup.enter="sendMessage"
+      ></v-textarea>
   </v-container>
 </template>
 
@@ -177,10 +182,12 @@ export default {
 }
 
 .text-area {
-  /* position: fixed !important;
-  bottom: 20px;
-  right: 20px; */
-  color: red;
+  position: fixed !important;
+  bottom: 0px;
+  right: 0px;
+  width: 100%;
+  height: 15%;
+  color: antiquewhite;
 }
 /* width */
 ::-webkit-scrollbar {

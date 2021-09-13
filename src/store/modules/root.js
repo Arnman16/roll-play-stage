@@ -150,13 +150,17 @@ const actions = {
     }
     else {
       const doc = saveFolder.doc(state.stage.slug)
-      const stage = await doc.get();
+      const stage = await doc.get()
+        .catch(error => {
+          console.log("User Save ref error", error);
+        });
+
       if (!stage) return;
       doc.delete()
         .then(() => { commit('SET_STAGE_SAVED', false) })
         .catch(error => {
           console.log("error removing stage from saved", error);
-        })
+        });
     }
   },
   async fetchUser({ commit, dispatch }, user) {
@@ -165,7 +169,10 @@ const actions = {
     try {
       if (user) {
         user.isAuthenticated = true;
-        let thisUser = await fb.usersCollection.doc(user.uid).get();
+        let thisUser = await fb.usersCollection.doc(user.uid).get()
+          .catch((error) => {
+            console.log('Error fetching User', error);
+          });
         if (!thisUser.exists) {
           let pageName = randomPageName;
           let slug = slugify(pageName);
@@ -235,7 +242,7 @@ const actions = {
   async fetchStage({ commit, state, dispatch }, slug) {
     commit("SET_LOADING", true);
     console.log("fetch stage");
-    await fb.stagesCollection.where("slug", "==", slug).get()
+    fb.stagesCollection.where("slug", "==", slug).get()
       .then((result) => {
         if (result.size === 0) {
           console.log('stage not found');

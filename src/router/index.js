@@ -1,7 +1,7 @@
 import VueRouter from "vue-router";
 import Vue from "vue";
 // import { auth } from '../db'
-import Home from "@/components/Home.vue"
+import Home from "@/components/Home.vue";
 import About from "@/components/About.vue";
 import Login from "@/components/Login.vue";
 import Signup from "@/components/Signup.vue";
@@ -33,7 +33,7 @@ const ifAuthenticated = (to, from, next) => {
   // let user = auth.currentUser;
   store
     .dispatch("authCheck")
-    .then(function () {
+    .then(function() {
       if (store.getters.user) {
         next();
         store.commit("SET_LOADING", false);
@@ -41,11 +41,11 @@ const ifAuthenticated = (to, from, next) => {
       } else {
         next();
         // TO MAKE SIGN IN REQUIRED
-        // next("/login"); 
+        // next("/login");
         store.commit("SET_LOADING", false);
       }
     })
-    .catch(function (error) {
+    .catch(function(error) {
       console.log(error);
     });
 };
@@ -55,6 +55,9 @@ const routes = [
     path: "/",
     name: "Home",
     component: Home,
+    meta: {
+      title: "Home",
+    },
   },
   {
     path: "/about",
@@ -65,6 +68,9 @@ const routes = [
     path: "/stages",
     name: "Stages",
     component: Stages,
+    meta: {
+      title: "Stages",
+    },
   },
   {
     path: "/stages/:slug",
@@ -76,12 +82,18 @@ const routes = [
     path: "/saved",
     name: "Saved",
     component: Saved,
+    meta: {
+      title: "Saved",
+    },
     beforeEnter: ifAuthenticated,
   },
   {
     path: "/login",
     name: "Login",
     component: Login,
+    meta: {
+      title: "Login",
+    },
     beforeEnter: ifNotAuthenticated,
   },
   {
@@ -99,6 +111,9 @@ const routes = [
     path: "/*",
     name: "404",
     component: NotFound,
+    meta: {
+      title: "404",
+    },
   },
 ];
 

@@ -411,6 +411,13 @@ export default {
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
     drawMode: false,
+    objectLastPosition: {
+      left: 0,
+      top: 0,
+      scaleX: 0,
+      scaleY: 0,
+      angle: 0,
+    },
     dice: [
       {
         icon: {
@@ -1681,7 +1688,17 @@ export default {
     window.addEventListener("keyup", (e) => {
       if (this.editTokenDialog) return;
       if (e.key == "Escape") {
-        this.canvas.discardActiveObject();
+        if (this.changing) {
+          this.canvas.getActiveObject().set({
+            left: this.objectLastPosition.left,
+            top: this.objectLastPosition.top,
+            scaleX: this.objectLastPosition.scaleX,
+            scaleY: this.objectLastPosition.scaleY,
+            angle: this.objectLastPosition.angle,
+          });
+        } else {
+          this.canvas.discardActiveObject();
+        }
         this.canvas.requestRenderAll();
       }
       if (e.key == "Delete") {
@@ -1889,6 +1906,17 @@ export default {
         this.objectSelected = true;
         const selection = this.canvas.getActiveObject();
         if (!selection) return;
+        this.objectLastPosition.left = selection.left;
+        this.objectLastPosition.top = selection.top;
+        this.objectLastPosition.scaleX =
+          selection.type == "activeSelection"
+            ? selection.scaleX
+            : selection.scaleX / 1.05;
+        this.objectLastPosition.scaleY =
+          selection.type == "activeSelection"
+            ? selection.scaleY
+            : selection.scaleY / 1.05;
+        this.objectLastPosition.angle = selection.angle;
         if (selection.type == "activeSelection") return;
         if (
           e.target.type !== "path" &&
@@ -1920,10 +1948,47 @@ export default {
         this.objectSelected = false;
         this.selected = false;
       },
-      "selection:updated": () => {
+      "selection:updated": (e) => {
         console.log("object selection updated");
+        const selection = this.canvas.getActiveObject();
         this.objectSelected = true;
+        this.objectLastPosition.left = selection.left;
+        this.objectLastPosition.top = selection.top;
+        this.objectLastPosition.scaleX =
+          selection.type == "activeSelection"
+            ? selection.scaleX
+            : selection.scaleX / 1.05;
+        this.objectLastPosition.scaleY =
+          selection.type == "activeSelection"
+            ? selection.scaleY
+            : selection.scaleY / 1.05;
+        this.objectLastPosition.angle = selection.angle;
+        if (selection.type == "activeSelection") return;
+        if (
+          e.target.type !== "path" &&
+          e.target.type !== "circle" &&
+          e.target.type !== "group"
+        ) {
+          e.target.set({
+            scaleX: e.target.scaleX / 1.05,
+            scaleY: e.target.scaleY / 1.05,
+            showToolTip: false,
+          });
+        }
+        this.selected = selection.toJSON([
+          "stage",
+          "owner",
+          "__id",
+          "deletable",
+          "selectable",
+          "evented",
+          "name",
+          "race",
+          "notes",
+          "marker",
+        ]);
         this.showToolTip = false;
+        if (!selection) return;
       },
       "object:moving": () => {
         this.showToolTip = false;

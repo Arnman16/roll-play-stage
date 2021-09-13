@@ -26,6 +26,7 @@ import { db, firebase, auth } from "../db";
 import { mapGetters } from "vuex";
 export default {
   name: "Stage",
+  title: "Stage",
   components: {
     CanvasOwner,
     // CanvasViewer,
@@ -39,6 +40,7 @@ export default {
       if (stageVal) {
         this.setUserWatchers();
         this.setUserStatus();
+        this.$title = stageVal.pageName;
       }
     },
     stageSaved(isSaved) {
@@ -123,7 +125,7 @@ export default {
           modified: firebase.database.ServerValue.TIMESTAMP,
           displayName: this.user.displayName,
           photoURL: this.user.photoURL,
-          slug: this.user.slug ? this.user.slug : '/',
+          slug: this.user.slug ? this.user.slug : "/",
           uid: uid,
           saved: false,
         };

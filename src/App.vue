@@ -1,14 +1,14 @@
 <template>
   <v-app>
-      <AppBar />
+    <AppBar />
 
-      <SidePanel />
-    
+    <SidePanel />
+
     <v-main class="pb-0 bb-0">
       <router-view></router-view>
     </v-main>
 
-          <Login />
+    <Login />
 
     <v-dialog v-model="loading" hide-overlay fullscreen hide-on-leave>
       <v-container fluid fill-height>
@@ -34,7 +34,7 @@
 import SidePanel from "./components/SidePanel";
 import AppBar from "./components/AppBar";
 import Login from "./components/Login";
-import { mapGetters} from "vuex";
+import { mapGetters } from "vuex";
 
 export default {
   name: "App",
@@ -71,8 +71,7 @@ export default {
     showLogin: false,
   }),
   methods: {},
-  mounted() {
-  },
+  mounted() {},
 };
 </script>
 

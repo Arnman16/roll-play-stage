@@ -687,6 +687,14 @@ export default {
         return this.$store.dispatch("setBackgrounds", newBackgrounds);
       },
     },
+    tokenList: {
+      get() {
+        return this.$store.getters.tokens;
+      },
+      set(newTokens) {
+        return this.$store.dispatch("setTokens", newTokens);
+      },
+    },
     activeBackground: {
       get() {
         return this.$store.getters.activeBackground;
@@ -1303,6 +1311,7 @@ export default {
           tokens.push(tokenObj);
         });
         this.tokens = tokens;
+        this.tokenList = tokens;
       });
       this.tokenRef.on("child_added", (snapshot) => {
         // console.log("CHILD_ADDED", snapshot.val().url);

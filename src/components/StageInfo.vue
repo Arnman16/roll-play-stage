@@ -23,7 +23,10 @@
           >
           <v-expansion-panel-content v-show="showSelected">
             <div v-show="selected">
-              <v-img v-if="!selected.marker" :src="selected.src"></v-img>
+              <v-img
+                v-if="!selected.marker"
+                :src="selected.src ? selected.src : selected.url"
+              ></v-img>
               <div v-else :class="selected.fill">
                 <v-icon x-large>mdi-map-marker</v-icon>
                 MARKER
@@ -50,7 +53,20 @@
         </v-expansion-panel>
         <v-expansion-panel>
           <v-expansion-panel-header>Objects</v-expansion-panel-header>
-          <v-expansion-panel-content> </v-expansion-panel-content>
+          <v-expansion-panel-content>
+            <div v-for="token in tokenList" :key="token.__id">
+              <v-card
+                class="my-2 mx-0"
+                tile
+                color="black"
+                @click="selected = token"
+              >
+                <v-card-text class="pa-1 text-center">
+                  {{ token.name ? token.name : "unnamed" }}
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-expansion-panel-content>
         </v-expansion-panel>
         <v-expansion-panel>
           <v-expansion-panel-header>Backgrounds</v-expansion-panel-header>
@@ -216,6 +232,14 @@ export default {
       },
       set(newActiveBackground) {
         return this.$store.dispatch("setActiveBackground", newActiveBackground);
+      },
+    },
+    tokenList: {
+      get() {
+        return this.$store.getters.tokens;
+      },
+      set(newTokens) {
+        return this.$store.dispatch("setTokens", newTokens);
       },
     },
     showSelected() {

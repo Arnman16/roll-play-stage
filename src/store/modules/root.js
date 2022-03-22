@@ -1,6 +1,6 @@
 import * as fb from "../../db";
 import router from "../../router";
-import { randomPageName, slugify } from "../../assets/words"
+import { randomPageName, slugify } from "../../assets/words";
 
 const state = () => ({
   fetchingUser: false,
@@ -20,13 +20,14 @@ const state = () => ({
     url: "",
     id: "",
   },
+  tokens: [],
   user: null,
   isAuthenticated: false,
   stage: null,
   stageSaved: false,
   activeUsers: [],
   loading: true,
-})
+});
 
 // getters
 const getters = {
@@ -38,6 +39,9 @@ const getters = {
   },
   activeBackground: (state) => {
     return state.activeBackground;
+  },
+  tokens: (state) => {
+    return state.tokens;
   },
   headerHeight: (state) => {
     return state.headerHeight;
@@ -69,7 +73,7 @@ const getters = {
   loading: (state) => {
     return state.loading;
   },
-}
+};
 
 // actions
 const actions = {
@@ -84,6 +88,10 @@ const actions = {
   setBackgrounds: ({ commit, state }, newBackgrounds) => {
     commit("SET_BACKGROUNDS", newBackgrounds);
     return state.backgrounds;
+  },
+  setTokens: ({ commit, state }, newTokens) => {
+    commit("SET_TOKENS", newTokens);
+    return state.tokens;
   },
   setHeaderHeight: ({ commit, state }, newHeight) => {
     commit("SET_HEADER_HEIGHT", newHeight);
@@ -104,8 +112,7 @@ const actions = {
   setUser: ({ commit, state }, val) => {
     if (!val) {
       commit("SET_IS_AUTHENTICATED", false);
-    }
-    else if (val.uid) {
+    } else if (val.uid) {
       commit("SET_IS_AUTHENTICATED", true);
     }
     commit("SET_USER", val);
@@ -118,7 +125,8 @@ const actions = {
     return state.stage;
   },
   signOut: ({ dispatch }) => {
-    fb.auth.signOut()
+    fb.auth
+      .signOut()
       .then(() => {
         dispatch("setUser", null);
         if (router.currentRoute.path !== "/") router.push("/");
@@ -133,45 +141,50 @@ const actions = {
     if (fb.auth.currentUser) {
       commit("SET_FETCHING_USER", true);
       await dispatch("fetchUser", fb.auth.currentUser);
-    }
-    else console.log("oops");
+    } else console.log("oops");
   },
   async setStageSaved({ state, commit }, isSaved) {
-    console.log('set stage saved', isSaved);
+    console.log("set stage saved", isSaved);
     const saveFolder = fb.fs.collection(`users/${state.user.uid}/savedStages`);
     if (isSaved) {
-      saveFolder.doc(state.stage.slug).set(state.stage).then(() => {
-        console.log('Stage saved')
-        commit('SET_STAGE_SAVED', true);
-      })
-        .catch(error => {
-          console.log("error saving stage", error);
+      saveFolder
+        .doc(state.stage.slug)
+        .set(state.stage)
+        .then(() => {
+          console.log("Stage saved");
+          commit("SET_STAGE_SAVED", true);
         })
-    }
-    else {
-      const doc = saveFolder.doc(state.stage.slug)
-      const stage = await doc.get()
-        .catch(error => {
-          console.log("User Save ref error", error);
+        .catch((error) => {
+          console.log("error saving stage", error);
         });
+    } else {
+      const doc = saveFolder.doc(state.stage.slug);
+      const stage = await doc.get().catch((error) => {
+        console.log("User Save ref error", error);
+      });
 
       if (!stage) return;
-      doc.delete()
-        .then(() => { commit('SET_STAGE_SAVED', false) })
-        .catch(error => {
+      doc
+        .delete()
+        .then(() => {
+          commit("SET_STAGE_SAVED", false);
+        })
+        .catch((error) => {
           console.log("error removing stage from saved", error);
         });
     }
   },
   async fetchUser({ commit, dispatch }, user) {
     commit("SET_LOADING", true);
-    console.log('fetch user');
+    console.log("fetch user");
     try {
       if (user) {
         user.isAuthenticated = true;
-        let thisUser = await fb.usersCollection.doc(user.uid).get()
+        let thisUser = await fb.usersCollection
+          .doc(user.uid)
+          .get()
           .catch((error) => {
-            console.log('Error fetching User', error);
+            console.log("Error fetching User", error);
           });
         if (!thisUser.exists) {
           let pageName = randomPageName;
@@ -202,30 +215,34 @@ const actions = {
             slug: slug,
             created: timestamp,
           };
-          fb.usersCollection.doc(user.uid).set(newUser).then(() => {
-            dispatch("setUser", newUser);
-            fb.stagesCollection.add(newStage);
-            const userStage = fb.db.database().ref(`users/${user.uid}/stages/${slug}`);
-            const defaultRef = fb.db.database().ref("default");
-            defaultRef.once("value")
-              .then((snapshot) => {
-                userStage.set(snapshot.val())
-              })
-              .catch((error) => {
-                console.log("New User", error);
-              });
-          })
+          fb.usersCollection
+            .doc(user.uid)
+            .set(newUser)
+            .then(() => {
+              dispatch("setUser", newUser);
+              fb.stagesCollection.add(newStage);
+              const userStage = fb.db
+                .database()
+                .ref(`users/${user.uid}/stages/${slug}`);
+              const defaultRef = fb.db.database().ref("default");
+              defaultRef
+                .once("value")
+                .then((snapshot) => {
+                  userStage.set(snapshot.val());
+                })
+                .catch((error) => {
+                  console.log("New User", error);
+                });
+            })
             .catch((error) => {
               console.log("New User", error);
             });
-        }
-        else {
+        } else {
           dispatch("setUser", thisUser.data());
           commit("SET_FETCHING_USER", false);
         }
-      }
-      else {
-        console.log('setting user null')
+      } else {
+        console.log("setting user null");
         dispatch("setUser", null);
         commit("SET_FETCHING_USER", false);
       }
@@ -242,14 +259,15 @@ const actions = {
   async fetchStage({ commit, state, dispatch }, slug) {
     commit("SET_LOADING", true);
     console.log("fetch stage");
-    fb.stagesCollection.where("slug", "==", slug).get()
+    fb.stagesCollection
+      .where("slug", "==", slug)
+      .get()
       .then((result) => {
         if (result.size === 0) {
-          console.log('stage not found');
+          console.log("stage not found");
           dispatch("setStage", null);
-        }
-        else {
-          console.log('setting stage');
+        } else {
+          console.log("setting stage");
           let stage = result.docs[0].data();
           stage.id = result.docs[0].id;
           dispatch("setStage", stage);
@@ -264,7 +282,7 @@ const actions = {
         console.error("Error fetching stage", error);
       });
   },
-}
+};
 
 // mutations
 const mutations = {
@@ -279,6 +297,9 @@ const mutations = {
   },
   SET_ACTIVE_BACKGROUND: (state, newBackground) => {
     state.activeBackground = newBackground;
+  },
+  SET_TOKENS: (state, newTokens) => {
+    state.tokens = newTokens;
   },
   SET_EDIT_TOKEN_DIALOG: (state, val) => {
     state.editTokenDialog = val;
@@ -307,12 +328,12 @@ const mutations = {
   SET_LOADING(state, isLoading) {
     state.loading = isLoading;
   },
-}
+};
 
 export default {
   namespaced: false,
   state,
   getters,
   actions,
-  mutations
-}
+  mutations,
+};

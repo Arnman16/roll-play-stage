@@ -55,16 +55,30 @@
           <v-expansion-panel-header>Objects</v-expansion-panel-header>
           <v-expansion-panel-content>
             <div v-for="token in tokenList" :key="token.__id">
-              <v-card
-                class="my-2 mx-0"
-                tile
-                color="black"
-                @click="selected = token"
-              >
-                <v-card-text class="pa-1 text-center">
-                  {{ token.name ? token.name : "unnamed" }}
-                </v-card-text>
-              </v-card>
+              <v-row no-gutters
+                ><v-col
+                  ><v-card
+                    class="my-1 mx-0"
+                    tile
+                    color="black"
+                    @click="selected = token"
+                  >
+                    <v-card-text class="pa-1 text-center">
+                      {{ token.name ? token.name : "unnamed" }}
+                    </v-card-text>
+                  </v-card></v-col
+                >
+                <v-col cols="2"
+                  ><v-btn
+                    small
+                    icon
+                    :color="token.visible ? 'white' : 'grey darken-3'"
+                    class="my-1 mr-0 ml-2"
+                    @click="visibleSwitch(token)"
+                    ><v-icon>mdi-eye</v-icon></v-btn
+                  ></v-col
+                >
+              </v-row>
             </div>
           </v-expansion-panel-content>
         </v-expansion-panel>
@@ -90,6 +104,8 @@
           </v-expansion-panel-content>
         </v-expansion-panel>
       </v-expansion-panels>
+      <v-btn @click="showTokenBrowser = true">test</v-btn>
+      <v-btn @click="setViewpoint">vpt</v-btn>
     </v-container>
     <v-dialog v-model="editTokenDialog" persistent max-width="600px">
       <v-card>
@@ -124,6 +140,7 @@
               v-model="selected.selectable"
             ></v-checkbox>
             <v-checkbox label="Evented" v-model="selected.evented"></v-checkbox>
+            <v-checkbox label="Visible" v-model="selected.visible"></v-checkbox>
             <v-select
               v-model="gcoSelect"
               v-if="selected.type === 'path'"
@@ -148,11 +165,14 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <TokenBrowser v-model="showTokenBrowser" />
   </div>
 </template>
 <script>
-import { db } from "../db";
+import { db, firebase } from "../db";
 import { mapGetters } from "vuex";
+import TokenBrowser from "@/components/TokenBrowser";
 export default {
   name: "SidePanel",
   watch: {
@@ -160,8 +180,12 @@ export default {
       this.selected.globalCompositeOperation = val.value;
     },
   },
+  components: {
+    TokenBrowser,
+  },
   data() {
     return {
+      showTokenBrowser: false,
       selectionToggle: false,
       gcoSelect: {
         value: "source-over",
@@ -247,6 +271,27 @@ export default {
     },
   },
   methods: {
+    setViewpoint() {
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const controlRef = db.database().ref(slug.concat("/control"));
+      const msg = this.$store.getters.viewport;
+      console.log(msg);
+      controlRef.push({
+        timeStamp: firebase.database.ServerValue.TIMESTAMP,
+        type: "vpt",
+        msg: msg,
+      });
+    },
+    visibleSwitch(thisToken) {
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
+      const tokenRef = db.database().ref(bgSlug + "/tokens");
+      const token = tokenRef.child(thisToken.__id);
+      const update = {
+        visible: !thisToken.visible,
+      };
+      token.update(update);
+    },
     saveToken() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
@@ -267,6 +312,7 @@ export default {
           notes: this.selected.notes,
           evented: this.selected.evented,
           deletable: this.selected.deletable,
+          visible: this.selected.visible,
           selectable: this.selected.selectable,
         };
         token.update(update);

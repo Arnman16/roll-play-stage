@@ -8,6 +8,7 @@ const state = () => ({
   selected: {},
   welcomeDialog: false,
   editTokenDialog: false,
+  viewport: null,
   backgrounds: [
     {
       name: "",
@@ -33,6 +34,9 @@ const state = () => ({
 const getters = {
   selected: (state) => {
     return state.selected;
+  },
+  viewport: (state) => {
+    return state.viewport;
   },
   backgrounds: (state) => {
     return state.backgrounds;
@@ -80,6 +84,10 @@ const actions = {
   setSelected: ({ commit, state }, newSelection) => {
     commit("SET_SELECTED", newSelection);
     return state.selected;
+  },
+  setViewport: ({ commit, state }, newViewport) => {
+    commit("SET_VIEWPORT", newViewport);
+    return state.viewport;
   },
   setActiveUsers: ({ commit, state }, newUsers) => {
     commit("SET_ACTIVE_USERS", newUsers);
@@ -291,6 +299,9 @@ const mutations = {
   },
   SET_HEADER_HEIGHT: (state, newHeight) => {
     state.headerHeight = newHeight;
+  },
+  SET_VIEWPORT: (state, newViewport) => {
+    state.viewport = newViewport;
   },
   SET_BACKGROUNDS: (state, newBackgrounds) => {
     state.backgrounds = newBackgrounds;

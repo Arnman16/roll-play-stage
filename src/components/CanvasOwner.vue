@@ -278,13 +278,54 @@
             <v-slider
               min="1"
               max="100"
-              :color="colorPickerColor"
+              color="colorPickerColor"
               thumb-color="grey darken-2"
               thumb-label
               hide-details
               class="mx-10"
               v-model="strokeWidth"
               hint="Line Size"
+            ></v-slider>
+          </div>
+        </v-sheet>
+      </v-card>
+    </v-dialog>
+    <v-dialog
+      v-model="filterDialog"
+      max-width="500px"
+      transition="dialog-transition"
+    >
+      <v-card class="mx-auto pa-1" color="grey darken-3">
+        <v-toolbar dense flat>
+          <v-toolbar-title small class="mx-auto"
+            >Filter Options</v-toolbar-title
+          >
+          <v-spacer></v-spacer>
+          <v-btn icon @click="filterDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <v-sheet class="pa-3">
+          <v-color-picker
+            dot-size="19"
+            hide-inputs
+            class="mx-auto pt-5"
+            v-model="tokenColorPicker"
+          >
+          </v-color-picker>
+          <v-divider class="my-2"></v-divider>
+          <div class="pa-5">
+            <div class="text-caption text-center">Opacity</div>
+            <v-slider
+              min="0"
+              max="100"
+              color="colorPickerColor"
+              thumb-color="grey darken-2"
+              thumb-label
+              hide-details
+              class="mx-10"
+              v-model="tokenOpacity"
+              hint="Opacity"
             ></v-slider>
           </div>
         </v-sheet>
@@ -297,6 +338,15 @@
       absolute
       offset-y
     >
+      <v-color-picker
+        v-model="tokenColorPicker"
+        hide-inputs
+        hide-canvas
+        hide-sliders
+        flat
+        :swatches="swatches"
+        show-swatches
+      ></v-color-picker>
       <v-list>
         <v-list-item
           v-for="(item, index) in objectMenuItems"
@@ -400,8 +450,9 @@
 
 <script>
 import { auth, db, firebase } from "../db";
+import "firebase/storage";
 import { fabric } from "fabric";
-import { throttle } from "lodash";
+import { throttle, debounce } from "lodash";
 
 const lightSVG = require("../assets/svg/light.svg");
 
@@ -411,6 +462,10 @@ export default {
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
     drawMode: false,
+    swatches: [
+      ["#00000000", "#FF000033", "#FFFF0033"],
+      ["#00FF0033", "#FFFFFF33", "#0000FF33"],
+    ],
     objectLastPosition: {
       left: 0,
       top: 0,
@@ -548,7 +603,10 @@ export default {
       message: "",
     },
     colorPickerDialog: false,
+    filterDialog: false,
     colorPickerColor: "#41A0E1",
+    tokenColorPicker: "#FF000000",
+    tokenOpacity: 1,
     strokeWidth: 1,
     drawing: false,
     erasing: false,
@@ -567,7 +625,9 @@ export default {
     },
     zoom: 1,
     bgDrag: false,
+    controlRef: null,
     tokenRef: null,
+    storageRef: null,
     objectSelected: false,
     tokens: {},
     canvas: {},
@@ -619,6 +679,7 @@ export default {
     mapScale: 1,
     showActiveMenu: false,
     objectMenuItems: [
+      { title: "Filter", action: "filter" },
       { title: "Edit", action: "edit" },
       { title: "Delete", action: "delete" },
       { title: "Lock", action: "lock" },
@@ -635,6 +696,7 @@ export default {
     clickData: {},
     isTokenAdded: false,
     tokenAdded: {},
+    colorPickerFlag: false,
   }),
   computed: {
     activeFab() {
@@ -677,6 +739,14 @@ export default {
       },
       set(val) {
         return this.$store.dispatch("setEditTokenDialog", val);
+      },
+    },
+    viewport: {
+      get() {
+        return this.$store.getters.viewport;
+      },
+      set(val) {
+        return this.$store.dispatch("setViewport", val);
       },
     },
     backgrounds: {
@@ -730,6 +800,16 @@ export default {
     strokeWidth(width) {
       this.canvas.freeDrawingBrush.width = width;
     },
+    tokenColorPicker(color) {
+      if (this.colorPickerFlag) return;
+      console.log(color);
+      this.debounce(this.setTokenColor, color);
+    },
+    tokenOpacity(opacity) {
+      if (this.colorPickerFlag) return;
+      console.log(opacity);
+      this.debounce(this.setTokenOpacity, opacity);
+    },
     activeBackground(val) {
       this.detachListeners();
       this.attachListeners();
@@ -742,6 +822,64 @@ export default {
     },
   },
   methods: {
+    debounce: debounce((func, x) => {
+      func(x);
+    }, 250),
+    tokenFilter() {},
+    setTokenColor(color) {
+      if (!auth.currentUser) return;
+      let click = this.clickData.target;
+      let targets = click._objects ? click._objects : [click];
+      // const batch = {};
+      targets.forEach((target) => {
+        var object = this.tokenRef.child(target.__id);
+        let updates = {};
+        if (target.type === "path") {
+          updates = { fill: color };
+          object = this.drawingsRef.child(target.__id);
+        } else if (target.marker) {
+          updates.fill = color;
+          object = this.markerRef.child(target.__id);
+        } else {
+          updates.type = "BlendColor";
+          updates.color = color;
+          updates.mode = "tint";
+          updates.alpha = this.getAlpha(color);
+          object = object.child("filters");
+        }
+        object.update(updates);
+        // console.log(this.getPath(object));
+        // console.log(updates);
+        // batch[this.getPath(object)] = updates;
+      });
+      // db.database()
+      //   .ref()
+      //   .update(batch);
+    },
+    getPath(ref) {
+      let key = "";
+      while (ref.parent) {
+        key = ref.key.concat("/").concat(key);
+        ref = ref.parent;
+      }
+      // key = key.slice(0, -1);
+      return key;
+    },
+    setTokenOpacity(opacity) {
+      console.log(opacity);
+      if (!auth.currentUser) return;
+      let target = this.clickData.target;
+      var object = this.tokenRef.child(target.__id);
+      if (target.type === "path") {
+        object = this.drawingsRef.child(target.__id);
+      } else if (target.marker) {
+        object = this.markerRef.child(target.__id);
+      }
+      const updates = { opacity: opacity != 0 ? opacity / 100 : 0.001 };
+      console.log(updates);
+
+      object.update(updates);
+    },
     startHandler(opt) {
       this.touch = true;
       this.showDice = false;
@@ -794,9 +932,11 @@ export default {
       this.showBgMenu = false;
       vpt[4] += e.clientX - this.canvas.lastPosX;
       vpt[5] += e.clientY - this.canvas.lastPosY;
+      this.viewport = vpt;
       this.canvas.requestRenderAll();
       this.canvas.lastPosX = e.clientX;
       this.canvas.lastPosY = e.clientY;
+      this.viewport = vpt;
     },
     endHandler() {
       this.isTouchZoom = false;
@@ -833,6 +973,9 @@ export default {
           selectable: target.selectable,
         };
         if (auth.currentUser) token.update(updates);
+      }
+      if (action === "filter") {
+        this.filterDialog = true;
       }
       if (action === "giveaccess") {
         // this.showObjectMenu = false;
@@ -895,11 +1038,16 @@ export default {
     getMenu(opt) {
       this.clickData = opt;
       if (opt.target) {
+        this.colorPickerFlag = true;
+        // if (opt.target.filters)
+        //   this.tokenColorPicker = opt.target.filters[0].color;
+        // else this.tokenColorPicker = opt.target.fill;
         if (opt.target.selectable) {
           this.objectMenuItems[2].title = "Lock";
         } else {
           this.objectMenuItems[2].title = "Unlock";
         }
+        this.colorPickerFlag = false;
       }
       opt.e.preventDefault();
       this.showObjectMenu = false;
@@ -1021,6 +1169,7 @@ export default {
       let ratio = this.canvas.getHeight() / this.canvas.backgroundImage.height;
       this.canvas.setViewportTransform([ratio, 0, 0, ratio, 0, 0]);
       this.zoom = this.canvas.getZoom().toFixed(2);
+      this.viewport = this.canvas.viewportTransform;
     },
     removeToken() {
       let selection = this.canvas.getActiveObject();
@@ -1070,6 +1219,7 @@ export default {
       return this.canvas.getObjects().filter((obj) => obj.__id === id)[0];
     },
     canvasScrollZoom(opt) {
+      if (this.showObjectMenu) return;
       if (this.showAllNamesFlag) {
         this.hideAllNames();
         this.showAllNamesFlag = false;
@@ -1097,6 +1247,7 @@ export default {
       }
       this.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
       vpt = this.canvas.viewportTransform;
+      this.viewport = vpt;
       let miniHeight =
         (this.canvas.height / zoom / this.activeBackground.height) *
         this.minimap.height;
@@ -1135,6 +1286,7 @@ export default {
         this.canvas.requestRenderAll();
         this.canvas.lastPosX = e.clientX;
         this.canvas.lastPosY = e.clientY;
+        this.viewport = vpt;
       }
       if (this.isMeasuring) {
         var vpt2 = this.canvas.viewportTransform;
@@ -1195,6 +1347,7 @@ export default {
           angle: 0,
           scaleX: 1,
           scaleY: 1,
+          visible: true,
           hasAccess: "",
           originX: "center",
           originY: "center",
@@ -1202,6 +1355,13 @@ export default {
           notes: "",
           deletable: true,
           selectable: true,
+          crossOrigin: "anonymous",
+          filters: {
+            type: "BlendColor",
+            color: "a8000000",
+            mode: "tint",
+            alpha: 0,
+          },
           evented: true,
         };
         this.isTokenAdded = true;
@@ -1286,6 +1446,9 @@ export default {
           }
         });
     },
+    getAlpha(hex) {
+      return parseInt(hex.slice(-2), 16) / 255;
+    },
     detachListeners() {
       if (this.tokenRef) this.tokenRef.off();
       if (this.markerRef) this.markerRef.off();
@@ -1296,11 +1459,43 @@ export default {
     attachListeners() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
+      this.controlRef = db.database().ref(slug.concat("/control"));
       this.tokenRef = db.database().ref(bgSlug + "/tokens");
       this.markerRef = db.database().ref(bgSlug + "/markers");
       this.drawingsRef = db.database().ref(bgSlug + "/drawings");
       this.lightRef = db.database().ref(bgSlug + "/light");
-
+      this.storageRef = firebase.storage().ref();
+      console.log(this.storageRef);
+      this.storageRef
+        .listAll()
+        .then((res) => {
+          res.prefixes.forEach((folderRef) => {
+            // All the prefixes under listRef.
+            // You may call listAll() recursively on them.
+            console.log(folderRef);
+          });
+          res.items.forEach((itemRef) => {
+            // All the items under listRef.
+            itemRef.getDownloadURL().then((url) => {
+              console.log(url);
+            });
+          });
+        })
+        .catch((error) => {
+          // Uh-oh, an error occurred!
+          console.error(error);
+        });
+      this.controlRef.on("child_added", (snapshot) => {
+        const data = snapshot.val();
+        console.log('control update', data, data.type)
+        switch (data.type) {
+          case "vpt":
+            console.log('vpt')
+            if (!auth.currentUser) {
+              this.canvas.setViewportTransform(data.msg);
+            }
+        }
+      });
       this.tokenRef.on("value", (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -1319,56 +1514,64 @@ export default {
         let hasAccess = false;
         if (this.user)
           if (data.hasAccess) hasAccess = data.hasAccess == this.user.uid;
-        fabric.Image.fromURL(data.url, (img) => {
-          // this.canvas.add(img).setActiveObject(img);
-          this.canvas.add(img);
-          var shadow = new fabric.Shadow({
-            color: "black",
-            blur: 28,
-            offsetX: 5,
-            offsetY: 5,
-            opacity: 0.5,
-          });
-          img.set({
-            stage: data.slug,
-            owner: data.owner,
-            __id: snapshot.key,
-            top: data.top,
-            left: data.left,
-            scaleX: data.scaleX,
-            scaleY: data.scaleY,
-            deletable: data.deletable,
-            selectable: (this.isOwner && data.selectable) || hasAccess,
-            // hasAccess: hasAccess,
-            evented: data.evented,
-            angle: data.angle,
-            shadow: shadow,
-            name: data.name,
-            race: data.race,
-            marker: false,
-            notes: data.notes,
-            showToolTip: false,
-            toolTipX: 0,
-            toolTipY: 0,
-            originX: "center",
-            originY: "center",
-            centeredScaling: true,
-            // hasBorders: false,
-            lockScalingX: this.isOwner ? false : true,
-            lockScalingY: this.isOwner ? false : true,
-          });
-          img.setControlsVisibility({
-            mt: false, // middle top disable
-            mb: false, // midle bottom
-            ml: false, // middle left
-            mr: false, // I think you get it
-            br: this.isOwner ? true : false,
-            bl: this.isOwner ? true : false,
-            tr: this.isOwner ? true : false,
-            tl: this.isOwner ? true : false,
-          });
-          img.setCoords();
-        });
+        fabric.Image.fromURL(
+          data.url,
+          (img) => {
+            var shadow = new fabric.Shadow({
+              color: "black",
+              blur: 28,
+              offsetX: 5,
+              offsetY: 5,
+              opacity: 0.5,
+            });
+            img.set({
+              stage: data.slug,
+              owner: data.owner,
+              __id: snapshot.key,
+              top: data.top,
+              left: data.left,
+              scaleX: data.scaleX,
+              scaleY: data.scaleY,
+              deletable: data.deletable,
+              opacity: data.opacity ? data.opacity : 1,
+              selectable: (this.isOwner && data.selectable) || hasAccess,
+              // hasAccess: hasAccess,
+              evented: data.evented,
+              angle: data.angle,
+              shadow: shadow,
+              name: data.name,
+              race: data.race,
+              marker: false,
+              notes: data.notes,
+              visible: data.visible,
+              showToolTip: false,
+              toolTipX: 0,
+              toolTipY: 0,
+              originX: "center",
+              originY: "center",
+              centeredScaling: true,
+              // hasBorders: false,
+              lockScalingX: this.isOwner ? false : true,
+              lockScalingY: this.isOwner ? false : true,
+            });
+            img.setControlsVisibility({
+              mt: false, // middle top disable
+              mb: false, // midle bottom
+              ml: false, // middle left
+              mr: false, // I think you get it
+              br: this.isOwner ? true : false,
+              bl: this.isOwner ? true : false,
+              tr: this.isOwner ? true : false,
+              tl: this.isOwner ? true : false,
+            });
+
+            img.setCoords();
+            img.filters.push(new fabric.Image.filters.BlendColor(data.filters));
+            img.applyFilters();
+            this.canvas.add(img);
+          },
+          { crossOrigin: "" }
+        );
       });
       this.markerRef.on("child_added", (snapshot) => {
         // console.log("Marker_ADDED", snapshot.val());
@@ -1387,6 +1590,7 @@ export default {
           __id: snapshot.key,
           marker: true,
           name: data.name,
+          opacity: data.opacity ? data.opacity : 0.8,
           deletable: data.deletable,
           selectable: this.isOwner && data.selectable,
           evented: data.evented,
@@ -1551,6 +1755,8 @@ export default {
               name: data.name,
               race: data.race,
               notes: data.notes,
+              visible: data.visible,
+              opacity: data.opacity ? data.opacity : 1,
               hasAccess: data.hasAccess,
               deletable: data.deletable,
               selectable:
@@ -1558,18 +1764,24 @@ export default {
                 (hasAccess && data.selectable),
               evented: data.evented,
             });
-            this.canvas.renderAll();
-            this.canvas._objects[i].animate("angle", data.angle, {});
-            this.canvas._objects[i].animate("scaleX", data.scaleX, {});
-            this.canvas._objects[i].animate("scaleY", data.scaleY, {});
-            this.canvas._objects[i].animate("left", data.left, {});
-            this.canvas._objects[i].animate("top", data.top, {
-              onChange: this.canvas.renderAll.bind(this.canvas),
-            });
-            this.canvas.requestRenderAll();
-            this.canvas._objects[i].setCoords();
+            const filter = this.canvas._objects[i].filters[0];
+            if (filter.color != data.filters.color) {
+              console.log(this.canvas._objects[i].filters[0], data.filters);
+              this.canvas._objects[i].filters[0].color = data.filters.color;
+              this.canvas._objects[i].filters[0].alpha = data.filters.alpha;
+              this.canvas._objects[i].applyFilters();
+            } else {
+              this.canvas._objects[i].animate("angle", data.angle, {});
+              this.canvas._objects[i].animate("scaleX", data.scaleX, {});
+              this.canvas._objects[i].animate("scaleY", data.scaleY, {});
+              this.canvas._objects[i].animate("left", data.left, {});
+              this.canvas._objects[i].animate("top", data.top, {
+                onChange: this.canvas.renderAll.bind(this.canvas),
+              });
+            }
           }
         }
+        this.canvas.requestRenderAll();
       });
       this.markerRef.on("child_changed", (snapshot) => {
         if (this.changing) return;
@@ -1586,6 +1798,8 @@ export default {
               scaleX: data.scaleX,
               scaleY: data.scaleY,
               deletable: data.deletable,
+              fill: data.fill,
+              opacity: data.opacity ? data.opacity : 0.8,
               selectable: this.isOwner && data.selectable,
               evented: data.evented,
               angle: data.angle,
@@ -1603,19 +1817,24 @@ export default {
         const data = snapshot.val();
         const id = snapshot.key;
         for (const i in this.canvas._objects) {
+          // if (this.canvas._objects[i].fill != data.fill) {
           if (this.canvas._objects[i].__id === id) {
-            this.canvas._objects[i].animate("left", data.left, {});
-            this.canvas._objects[i].animate("top", data.top, {
-              onChange: this.canvas.renderAll.bind(this.canvas),
-            });
+            // this.canvas._objects[i].animate("left", data.left, {});
+            // this.canvas._objects[i].animate("top", data.top, {
+            //   onChange: this.canvas.renderAll.bind(this.canvas),
+            // });
             this.canvas._objects[i].set({
               scaleX: data.scaleX,
               scaleY: data.scaleY,
               deletable: data.deletable,
               selectable: this.isOwner && data.selectable,
               evented: data.evented,
+              fill: data.fill ? data.fill : "#555555",
+              opacity: data.opacity ? data.opacity : 1,
               globalCompositeOperation: data.globalCompositeOperation,
               angle: data.angle,
+              left: data.left,
+              top: data.top,
               name: data.name,
               notes: data.notes,
               stroke: data.stroke,
@@ -1685,6 +1904,7 @@ export default {
       fireMiddleClick: true, // <-- enable firing of middle click events
       stopContextMenu: true, // <--  prevent context menu from showing
     });
+
     this.reloadSession();
     const fullWidth = window.innerWidth;
     const fullHeight = window.innerHeight - this.headerHeight - 5;
@@ -1805,6 +2025,7 @@ export default {
         this.throttle(this.canvasMouseMove, opt, pointer);
       },
       "mouse:up": (opt) => {
+        this.canvas.isDragging = false;
         if (this.isTap) {
           if (opt.target) {
             this.shortSnackbar.show = true;

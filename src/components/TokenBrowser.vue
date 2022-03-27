@@ -2,22 +2,41 @@
   <v-dialog scrollable v-model="show" max-width="500px">
     <v-card class="mx-auto pa-1" color="grey darken-3">
       <v-toolbar dense flat>
-        <v-toolbar-title small class="mx-auto">My Tokens</v-toolbar-title>
-        <v-spacer></v-spacer>
+        <!-- <v-spacer></v-spacer> -->
+        <v-toolbar-title class="mx-auto">
+          <v-select
+            :items="items"
+            class="mx-auto"
+            v-model="listSelected"
+            label="Solo field"
+            hide-details
+            solo
+            flat
+          ></v-select>
+        </v-toolbar-title>
+
+        <!-- <v-spacer></v-spacer> -->
         <v-btn icon @click="show = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-toolbar>
       <v-card-text style="height: 500px;">
         <v-row class="mt-2">
+          <div v-if="!tokens.length" class="mx-auto my-5 text-subtitle-1">
+            There are no tokens here :(
+          </div>
           <v-col
-            v-for="(token, index) in tokenSample"
+            v-for="(token, index) in tokens"
             :key="index"
             class="d-flex child-flex"
             cols="4"
             ><v-card>
               <draggable @end="onDragEnd" @start="onDragStart(token)">
-                <v-img :src="token" :lazy-src="tokenSample[0]" aspect-ratio="1">
+                <v-img
+                  :src="token"
+                  lazy-src="https://i.imgur.com/DgnTd4i.png"
+                  aspect-ratio="1"
+                >
                   <template v-slot:placeholder>
                     <v-row
                       class="fill-height ma-0"
@@ -43,7 +62,8 @@
 <script>
 import tokenList from "../assets/tokens";
 import draggable from "vuedraggable";
-import { db } from "../db";
+import { db, firebase } from "../db";
+import "firebase/storage";
 
 export default {
   components: {
@@ -78,10 +98,31 @@ export default {
       return this.user.uid === this.stage.owner;
     },
   },
+  watch: {
+    listSelected(value) {
+      switch (value) {
+        case "Tokens - Saved":
+          this.fetchSavedList();
+          break;
+        case "Tokens - Monsters":
+          this.fetchMonsterList();
+          break;
+        case "Tokens - Heroes":
+          this.fetchHeroList();
+          break;
+        default:
+          this.fetchSavedList();
+          break;
+      }
+    },
+  },
   data() {
     return {
       tokenList: tokenList,
-      tokenSample: [],
+      items: ["Tokens - Saved", "Tokens - Monsters", "Tokens - Heroes"],
+      listSelected: "Tokens - Saved",
+      tokens: [],
+      tokenCache: {},
       tokenAdded: {
         stage: "",
         owner: "",
@@ -110,12 +151,50 @@ export default {
     };
   },
   methods: {
+    fetchSavedList() {
+      this.tokens = [];
+    },
+    fetchMonsterList() {
+      if (this.tokenCache.monsters) {
+        this.tokens = this.tokenCache.monsters;
+      } else {
+        this.tokens = this.tokenList.slice(0, 100);
+        this.tokenCache.monsters = this.tokens;
+      }
+    },
+    fetchHeroList() {
+      if (this.tokenCache.heroes) {
+        this.tokens = this.tokenCache.heroes;
+      } else {
+        this.tokens = [];
+        let sizeLimit = 100;
+        this.storageRef = firebase.storage().ref("tokens");
+        console.log(this.storageRef);
+        this.storageRef
+          .listAll()
+          .then((res) => {
+            for (let i = 0; i < sizeLimit; i++) {
+              let item = res.items[i];
+              item.getDownloadURL().then((url) => {
+                this.tokens.push(url);
+              });
+            }
+          })
+          .then(() => {
+            this.tokenCache.heroes = this.tokens;
+          })
+          .catch((error) => {
+            // Uh-oh, an error occurred!
+            console.error(error);
+          });
+      }
+    },
     onDragStart(url) {
       this.tokenAdded.url = url;
       // console.log(token);
     },
     onDragEnd(e) {
-      console.log(e.originalEvent);
+      console.log(e, e.originalEvent);
       var headerHeight = this.$store.getters.headerHeight;
       var vpt = this.$store.getters.viewport;
       var mouseX = e.originalEvent.x;
@@ -130,9 +209,6 @@ export default {
       const tokenRef = db.database().ref(bgSlug + "/tokens");
       tokenRef.push(this.tokenAdded);
     },
-  },
-  mounted() {
-    this.tokenSample = this.tokenList.slice(0, 100);
   },
 };
 </script>

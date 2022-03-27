@@ -278,6 +278,7 @@ export default {
       console.log(msg);
       controlRef.push({
         timeStamp: firebase.database.ServerValue.TIMESTAMP,
+
         type: "vpt",
         msg: msg,
       });

@@ -450,7 +450,7 @@
 
 <script>
 import { auth, db, firebase } from "../db";
-import "firebase/storage";
+// import "firebase/storage";
 import { fabric } from "fabric";
 import { throttle, debounce } from "lodash";
 
@@ -627,7 +627,6 @@ export default {
     bgDrag: false,
     controlRef: null,
     tokenRef: null,
-    storageRef: null,
     objectSelected: false,
     tokens: {},
     canvas: {},
@@ -1464,34 +1463,14 @@ export default {
       this.markerRef = db.database().ref(bgSlug + "/markers");
       this.drawingsRef = db.database().ref(bgSlug + "/drawings");
       this.lightRef = db.database().ref(bgSlug + "/light");
-      this.storageRef = firebase.storage().ref();
-      console.log(this.storageRef);
-      this.storageRef
-        .listAll()
-        .then((res) => {
-          res.prefixes.forEach((folderRef) => {
-            // All the prefixes under listRef.
-            // You may call listAll() recursively on them.
-            console.log(folderRef);
-          });
-          res.items.forEach((itemRef) => {
-            // All the items under listRef.
-            itemRef.getDownloadURL().then((url) => {
-              console.log(url);
-            });
-          });
-        })
-        .catch((error) => {
-          // Uh-oh, an error occurred!
-          console.error(error);
-        });
+
       this.controlRef.on("child_added", (snapshot) => {
         const data = snapshot.val();
-        console.log('control update', data, data.type)
+        console.log("control update");
         switch (data.type) {
           case "vpt":
-            console.log('vpt')
-            if (!auth.currentUser) {
+            console.log("vpt");
+            if (!auth.currentUser || auth.currentUser.uid !== this.stage.owner) {
               this.canvas.setViewportTransform(data.msg);
             }
         }

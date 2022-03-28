@@ -459,6 +459,7 @@ const lightSVG = require("../assets/svg/light.svg");
 export default {
   name: "Canvas2",
   data: () => ({
+    hoverZoomEnabled: false,
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
     drawMode: false,
@@ -1375,9 +1376,9 @@ export default {
       fabric.Image.fromURL(url, (img) => {
         // img.scaleToHeight(this.canvas.getHeight());
         this.canvas.setBackgroundImage(img);
+        this.resetZoom();
         this.canvas.renderAll.bind(this.canvas);
         this.canvas.renderAll();
-        this.resetZoom();
       });
     },
     addBg(e) {
@@ -1464,15 +1465,21 @@ export default {
       this.drawingsRef = db.database().ref(bgSlug + "/drawings");
       this.lightRef = db.database().ref(bgSlug + "/light");
 
-      this.controlRef.on("child_added", (snapshot) => {
-        const data = snapshot.val();
-        console.log("control update");
-        switch (data.type) {
-          case "vpt":
-            console.log("vpt");
-            if (!auth.currentUser || auth.currentUser.uid !== this.stage.owner) {
-              this.canvas.setViewportTransform(data.msg);
-            }
+      this.controlRef.on("value", (snapshot) => {
+        const controlData = Object.values(snapshot.val()).pop();
+        let timeSinceUpdate = Date.now() - controlData.timeStamp;
+        if (timeSinceUpdate < 60000) {
+          console.log("control update");
+          switch (controlData.type) {
+            case "vpt":
+              console.log("vpt");
+              if (
+                !auth.currentUser ||
+                auth.currentUser.uid !== this.stage.owner
+              ) {
+                this.canvas.setViewportTransform(controlData.msg);
+              }
+          }
         }
       });
       this.tokenRef.on("value", (snapshot) => {
@@ -1728,6 +1735,7 @@ export default {
         let hasAccess;
         if (!auth.currentUser) hasAccess = false;
         else if (data.hasAccess) hasAccess = data.hasAccess == this.user.uid;
+        this.canvas.bringToFront(this.getTokenFromId(id));
         for (const i in this.canvas._objects) {
           if (this.canvas._objects[i].__id === id) {
             this.canvas._objects[i].set({
@@ -1826,6 +1834,7 @@ export default {
       });
     },
     reloadSession() {
+      console.log("reoladSession");
       if (this.sessionRef) this.sessionRef.off();
       if (this.bgRef) this.bgRef.off();
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
@@ -2117,14 +2126,16 @@ export default {
         if (!selection) return;
         this.objectLastPosition.left = selection.left;
         this.objectLastPosition.top = selection.top;
-        this.objectLastPosition.scaleX =
-          selection.type == "activeSelection"
-            ? selection.scaleX
-            : selection.scaleX / 1.05;
-        this.objectLastPosition.scaleY =
-          selection.type == "activeSelection"
-            ? selection.scaleY
-            : selection.scaleY / 1.05;
+        if (this.hoverZoomEnabled) {
+          this.objectLastPosition.scaleX =
+            selection.type == "activeSelection"
+              ? selection.scaleX
+              : selection.scaleX / 1.05;
+          this.objectLastPosition.scaleY =
+            selection.type == "activeSelection"
+              ? selection.scaleY
+              : selection.scaleY / 1.05;
+        }
         this.objectLastPosition.angle = selection.angle;
         if (selection.type == "activeSelection") return;
         if (
@@ -2132,11 +2143,13 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
-          e.target.set({
-            scaleX: e.target.scaleX / 1.05,
-            scaleY: e.target.scaleY / 1.05,
-            showToolTip: false,
-          });
+          if (this.hoverZoomEnabled) {
+            e.target.set({
+              scaleX: e.target.scaleX / 1.05,
+              scaleY: e.target.scaleY / 1.05,
+              showToolTip: false,
+            });
+          } else e.target.set({ showToolTip: false });
         }
         this.selected = selection.toJSON([
           "stage",
@@ -2163,14 +2176,16 @@ export default {
         this.objectSelected = true;
         this.objectLastPosition.left = selection.left;
         this.objectLastPosition.top = selection.top;
-        this.objectLastPosition.scaleX =
-          selection.type == "activeSelection"
-            ? selection.scaleX
-            : selection.scaleX / 1.05;
-        this.objectLastPosition.scaleY =
-          selection.type == "activeSelection"
-            ? selection.scaleY
-            : selection.scaleY / 1.05;
+        if (this.hoverZoomEnabled) {
+          this.objectLastPosition.scaleX =
+            selection.type == "activeSelection"
+              ? selection.scaleX
+              : selection.scaleX / 1.05;
+          this.objectLastPosition.scaleY =
+            selection.type == "activeSelection"
+              ? selection.scaleY
+              : selection.scaleY / 1.05;
+        }
         this.objectLastPosition.angle = selection.angle;
         if (selection.type == "activeSelection") return;
         if (
@@ -2178,11 +2193,17 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
-          e.target.set({
-            scaleX: e.target.scaleX / 1.05,
-            scaleY: e.target.scaleY / 1.05,
-            showToolTip: false,
-          });
+          if (this.hoverZoomEnabled) {
+            e.target.set({
+              scaleX: e.target.scaleX / 1.05,
+              scaleY: e.target.scaleY / 1.05,
+              showToolTip: false,
+            });
+          } else {
+            e.target.set({
+              showToolTip: false,
+            });
+          }
         }
         this.selected = selection.toJSON([
           "stage",
@@ -2223,10 +2244,12 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
-          e.target.set({
-            scaleX: e.target.scaleX * 1.05,
-            scaleY: e.target.scaleY * 1.05,
-          });
+          if (this.hoverZoomEnabled) {
+            e.target.set({
+              scaleX: e.target.scaleX * 1.05,
+              scaleY: e.target.scaleY * 1.05,
+            });
+          }
         }
 
         if (e.target.name) {
@@ -2257,10 +2280,12 @@ export default {
           e.target.type !== "circle" &&
           e.target.type !== "group"
         ) {
-          e.target.set({
-            scaleX: e.target.scaleX / 1.05,
-            scaleY: e.target.scaleY / 1.05,
-          });
+          if (this.hoverZoomEnabled) {
+            e.target.set({
+              scaleX: e.target.scaleX / 1.05,
+              scaleY: e.target.scaleY / 1.05,
+            });
+          }
         }
         this.canvas.renderAll();
       },
@@ -2314,7 +2339,10 @@ export default {
                 if (broke.__id === json.__id) objects.push(json);
               });
             });
-          } else objects.push(e.target);
+          } else {
+            objects.push(e.target);
+            this.canvas.bringToFront(e.target);
+          }
           objects.forEach((object) => {
             if (object.type === "path") {
               const drawing = this.drawingsRef.child(object.__id);

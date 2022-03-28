@@ -107,8 +107,14 @@ export default {
         case "Tokens - Monsters":
           this.fetchMonsterList();
           break;
-        case "Tokens - Heroes":
-          this.fetchHeroList();
+        case "Tokens - Heroes1":
+          this.fetchHeroList(0, "1");
+          break;
+        case "Tokens - Heroes2":
+          this.fetchHeroList(100, "2");
+          break;
+        case "Tokens - Heroes3":
+          this.fetchHeroList(200, "3");
           break;
         default:
           this.fetchSavedList();
@@ -119,7 +125,13 @@ export default {
   data() {
     return {
       tokenList: tokenList,
-      items: ["Tokens - Saved", "Tokens - Monsters", "Tokens - Heroes"],
+      items: [
+        "Tokens - Saved",
+        "Tokens - Monsters",
+        "Tokens - Heroes1",
+        "Tokens - Heroes2",
+        "Tokens - Heroes3",
+      ],
       listSelected: "Tokens - Saved",
       tokens: [],
       tokenCache: {},
@@ -162,9 +174,9 @@ export default {
         this.tokenCache.monsters = this.tokens;
       }
     },
-    fetchHeroList() {
-      if (this.tokenCache.heroes) {
-        this.tokens = this.tokenCache.heroes;
+    fetchHeroList(startPoint, num) {
+      if (this.tokenCache.heroes && this.tokenCache.heroes[num]) {
+        this.tokens = this.tokenCache.heroes[num];
       } else {
         this.tokens = [];
         let sizeLimit = 100;
@@ -173,7 +185,7 @@ export default {
         this.storageRef
           .listAll()
           .then((res) => {
-            for (let i = 0; i < sizeLimit; i++) {
+            for (let i = startPoint; i < sizeLimit + startPoint; i++) {
               let item = res.items[i];
               item.getDownloadURL().then((url) => {
                 this.tokens.push(url);
@@ -181,7 +193,7 @@ export default {
             }
           })
           .then(() => {
-            this.tokenCache.heroes = this.tokens;
+            this.tokenCache.heroes[num] = this.tokens;
           })
           .catch((error) => {
             // Uh-oh, an error occurred!

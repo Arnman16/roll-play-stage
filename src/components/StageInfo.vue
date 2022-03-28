@@ -85,26 +85,18 @@
         <v-expansion-panel>
           <v-expansion-panel-header>Backgrounds</v-expansion-panel-header>
           <v-expansion-panel-content>
+            <div class="mt-2"></div>
             <div v-for="background in backgrounds" :key="background.__id">
-              <v-card
-                class="my-2 mx-0"
-                tile
-                :color="
-                  background.__id == activeBackground.__id
-                    ? 'light-blue darken-4'
-                    : 'light-blue'
-                "
-                @click="setActiveBg(background)"
-              >
-                <v-card-text class="pa-1 text-center">
-                  {{ background.name }}
-                </v-card-text>
-              </v-card>
+              <BackgroundMenu
+                :background="background"
+                :isActive="background.__id == activeBackground.__id"
+              />
             </div>
           </v-expansion-panel-content>
         </v-expansion-panel>
       </v-expansion-panels>
       <v-btn @click="showTokenBrowser = true">test</v-btn>
+      <v-btn @click="setViewpoint">vpt</v-btn>
       <v-btn @click="setViewpoint">vpt</v-btn>
     </v-container>
     <v-dialog v-model="editTokenDialog" persistent max-width="600px">
@@ -173,6 +165,8 @@
 import { db, firebase } from "../db";
 import { mapGetters } from "vuex";
 import TokenBrowser from "@/components/TokenBrowser";
+import BackgroundMenu from "@/components/BackgroundMenu";
+const locationPin = require("../assets/svg/locationPin.svg");
 export default {
   name: "SidePanel",
   watch: {
@@ -182,9 +176,11 @@ export default {
   },
   components: {
     TokenBrowser,
+    BackgroundMenu,
   },
   data() {
     return {
+      locationPin: locationPin,
       showTokenBrowser: false,
       selectionToggle: false,
       gcoSelect: {
@@ -212,6 +208,14 @@ export default {
     };
   },
   computed: {
+    bgMenu: {
+      get() {
+        return this.$store.getters.bgMenu;
+      },
+      set(value) {
+        return this.$store.dispatch("setBgMenu", value);
+      },
+    },
     drawer: {
       get() {
         return this.$store.getters.drawer;
@@ -278,7 +282,6 @@ export default {
       console.log(msg);
       controlRef.push({
         timeStamp: firebase.database.ServerValue.TIMESTAMP,
-
         type: "vpt",
         msg: msg,
       });
@@ -319,15 +322,6 @@ export default {
         token.update(update);
       }
       this.editTokenDialog = false;
-    },
-    setActiveBg(background) {
-      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
-      // const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
-      this.sessionRef = db.database().ref(slug + "/session");
-      this.sessionRef.child(1).update({
-        activeBackground: background,
-      });
-      this.activeBackground = background;
     },
   },
 };

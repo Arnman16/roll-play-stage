@@ -1496,6 +1496,7 @@ export default {
       });
       this.tokenRef.on("child_added", (snapshot) => {
         // console.log("CHILD_ADDED", snapshot.val().url);
+        console.log("ca");
         const data = snapshot.val();
         let hasAccess = false;
         if (this.user)
@@ -1527,6 +1528,7 @@ export default {
               shadow: shadow,
               name: data.name,
               race: data.race,
+              sendToBack: data.sendToBack,
               marker: false,
               notes: data.notes,
               visible: data.visible,
@@ -1555,6 +1557,8 @@ export default {
             img.filters.push(new fabric.Image.filters.BlendColor(data.filters));
             img.applyFilters();
             this.canvas.add(img);
+            if (img.sendToBack) this.canvas.sendToBack(img);
+            else this.canvas.bringToFront(img);
           },
           { crossOrigin: "" }
         );
@@ -1735,7 +1739,8 @@ export default {
         let hasAccess;
         if (!auth.currentUser) hasAccess = false;
         else if (data.hasAccess) hasAccess = data.hasAccess == this.user.uid;
-        this.canvas.bringToFront(this.getTokenFromId(id));
+        if (data.sendToBack) this.canvas.sendToBack(this.getTokenFromId(id));
+        else this.canvas.bringToFront(this.getTokenFromId(id));
         for (const i in this.canvas._objects) {
           if (this.canvas._objects[i].__id === id) {
             this.canvas._objects[i].set({

@@ -1,16 +1,18 @@
 <template>
-  <div>
+  <div class="ma-0 pa-0">
     <v-dialog v-model="showMenu" max-width="500px">
       <template v-slot:activator="{ on, attrs }">
         <v-row no-gutters
-          ><v-col>
-            <v-card
-              class="mt-1 mx-0"
+          ><v-col cols="10"
+            ><v-card
+              class="mt-1 mx-0 pa-1"
+              flat
               tile
-              :color="isActive ? 'teal darken-4' : 'grey darken-3'"
+              :light="isActive"
+              :color="isActive ? 'white' : '#171717'"
               @click="setActiveBg(background)"
             >
-              <v-card-text class="pa-1 text-center">
+              <v-card-text class="pt-0 py-1 pb-1 text-center text-subtitle">
                 {{ background.name }}
               </v-card-text>
             </v-card>
@@ -18,11 +20,11 @@
           <v-col cols="1">
             <v-btn
               icon
-              small
+              x-small
               v-bind="attrs"
               v-on="on"
               @click="name = background.name"
-              class="ma-1"
+              class="ma-1 my-2"
               ><v-icon small>mdi-cog</v-icon></v-btn
             >
           </v-col>

@@ -16,7 +16,7 @@
       </v-card-title>
     </v-card>
     <v-container fill-height class="px-1 pb-1 pt-0 align-start">
-      <v-expansion-panels focusable accordion multiple>
+      <v-expansion-panels focusable accordion flat multiple>
         <v-expansion-panel>
           <v-expansion-panel-header @click="selectionToggle = !selectionToggle"
             >Selection</v-expansion-panel-header
@@ -51,33 +51,51 @@
             <div class="caption" v-if="!selected">No Selection</div>
           </v-expansion-panel-content>
         </v-expansion-panel>
-        <v-expansion-panel>
-          <v-expansion-panel-header>Objects</v-expansion-panel-header>
+        <v-expansion-panel
+        >
+          <v-expansion-panel-header
+            >Objects</v-expansion-panel-header
+          >
           <v-expansion-panel-content>
             <div v-for="token in tokenList" :key="token.__id">
               <v-row no-gutters
-                ><v-col
+                ><v-col cols="9"
                   ><v-card
-                    class="my-1 mx-0"
+                    class="mt-1 mx-0"
+                    flat
                     tile
-                    color="black"
+                    color="#171717"
                     @click="selected = token"
                   >
-                    <v-card-text class="pa-1 text-center">
-                      {{ token.name ? token.name : "unnamed" }}
+                    <v-card-text class="pa-1">
+                      <v-avatar size="25" class="mr-1">
+                        <v-img :src="token.url"></v-img
+                      ></v-avatar>
+                      <span class="pa-1 text-center text-subtitle">
+                        {{ token.name ? token.name : "unnamed" }}
+                      </span>
                     </v-card-text>
                   </v-card></v-col
                 >
-                <v-col cols="2"
+                <v-col cols="1"
                   ><v-btn
-                    small
+                    x-small
                     icon
                     :color="token.visible ? 'white' : 'grey darken-3'"
-                    class="my-1 mr-0 ml-2"
+                    class="ma-1 my-2"
                     @click="visibleSwitch(token)"
-                    ><v-icon>mdi-eye</v-icon></v-btn
+                    ><v-icon small>mdi-eye</v-icon></v-btn
                   ></v-col
                 >
+                <v-col cols="1">
+                  <v-btn
+                    icon
+                    x-small
+                    @click="(selected = token), (editTokenDialog = true)"
+                    class="ma-1 ml-3 my-2"
+                    ><v-icon small>mdi-cog</v-icon></v-btn
+                  >
+                </v-col>
               </v-row>
             </div>
           </v-expansion-panel-content>
@@ -133,6 +151,10 @@
             ></v-checkbox>
             <v-checkbox label="Evented" v-model="selected.evented"></v-checkbox>
             <v-checkbox label="Visible" v-model="selected.visible"></v-checkbox>
+            <v-checkbox
+              label="Send To Back"
+              v-model="selected.sendToBack"
+            ></v-checkbox>
             <v-select
               v-model="gcoSelect"
               v-if="selected.type === 'path'"
@@ -173,6 +195,9 @@ export default {
     gcoSelect(val) {
       this.selected.globalCompositeOperation = val.value;
     },
+    objectsActive(val) {
+      console.log(val);
+    },
   },
   components: {
     TokenBrowser,
@@ -180,6 +205,7 @@ export default {
   },
   data() {
     return {
+      objectsActive: false,
       locationPin: locationPin,
       showTokenBrowser: false,
       selectionToggle: false,
@@ -318,6 +344,7 @@ export default {
           deletable: this.selected.deletable,
           visible: this.selected.visible,
           selectable: this.selected.selectable,
+          sendToBack: this.selected.sendToBack,
         };
         token.update(update);
       }
@@ -329,6 +356,14 @@ export default {
 
 <style>
 html {
+  overflow-y: auto;
+}
+.v-expansion-panel-content__wrap {
+  padding: 0 !important;
+}
+.v-expansion-panel-content {
+  padding: 0 !important;
+  max-height: 50vh;
   overflow-y: auto;
 }
 </style>

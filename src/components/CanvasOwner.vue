@@ -34,6 +34,17 @@
         </div>
       </div>
     </v-container>
+    <draggable @end="onPinDrop">
+      <v-btn
+        x-large
+        icon
+        plain
+        :ripple="false"
+        style="position: absolute; bottom: 80px; left: 15px; z-index: 2"
+      >
+        <v-img max-width="56" :src="locationPin"></v-img>
+      </v-btn>
+    </draggable>
     <v-speed-dial
       fab
       v-model="fab"
@@ -453,12 +464,17 @@ import { auth, db, firebase } from "../db";
 // import "firebase/storage";
 import { fabric } from "fabric";
 import { throttle, debounce } from "lodash";
-
+const locationPin = require("../assets/svg/locationPin.svg");
 const lightSVG = require("../assets/svg/light.svg");
+import draggable from "vuedraggable";
 
 export default {
   name: "Canvas2",
+  components: {
+    draggable,
+  },
   data: () => ({
+    locationPin: locationPin,
     hoverZoomEnabled: false,
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
     addMarker: false,
@@ -856,6 +872,27 @@ export default {
       //   .ref()
       //   .update(batch);
     },
+    async onPinDrop(e) {
+      var headerHeight = this.$store.getters.headerHeight;
+      var vpt = this.canvas.viewportTransform;
+      var mouseX = e.originalEvent.x;
+      var mouseY = e.originalEvent.y;
+      let mouse = {};
+      mouse.x = (mouseX - vpt[4]) / vpt[0];
+      mouse.y = (mouseY - headerHeight - vpt[5]) / vpt[0];
+      this.controlRef.push({
+        timeStamp: firebase.database.ServerValue.TIMESTAMP,
+        type: "pin",
+        msg: mouse,
+      });
+    },
+    delay300() {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.canvas.getPointer());
+        }, 500);
+      });
+    },
     getPath(ref) {
       let key = "";
       while (ref.parent) {
@@ -1121,6 +1158,43 @@ export default {
       this.markerRef.push(marker).catch((error) => {
         console.log("marker: ", error.message);
       });
+    },
+    dropPin(mouse) {
+      this.canvas.skipOffscreen = false;
+      fabric.loadSVGFromURL(this.locationPin, (objects, options) => {
+        var pin = fabric.util.groupSVGElements(objects, options);
+        let scale = (1 / this.zoom) * 0.3;
+        let offset = 40 / this.zoom;
+        console.log(offset);
+        pin.set({
+          originX: "center",
+          originY: "center",
+          evented: false,
+          selectable: false,
+          left: mouse.x,
+          scaleX: scale,
+          scaleY: scale,
+          fill: "#ffea70",
+          opacity: 0.7,
+          top: mouse.y - 100 / this.zoom,
+        });
+        this.canvas.add(pin);
+        pin.animate("top", mouse.y - offset, {
+          duration: 100,
+          onChange: this.canvas.renderAll.bind(this.canvas),
+          onComplete: function() {},
+        });
+
+        pin.animate("opacity", 0, {
+          duration: 1000,
+          onChange: this.canvas.renderAll.bind(this.canvas),
+          onComplete: () => {
+            this.canvas.remove(pin);
+          },
+        });
+        return pin;
+      });
+      this.canvas.skipOffscreen = true;
     },
     createLightSource() {
       fabric.loadSVGFromURL(this.lightSVG, (objects, options) => {
@@ -1454,6 +1528,7 @@ export default {
       if (this.markerRef) this.markerRef.off();
       if (this.drawingsRef) this.drawingsRef.off();
       if (this.lightRef) this.lightRef.off();
+      if (this.controlRef) this.controlRef.off();
       this.canvas.clear();
     },
     attachListeners() {
@@ -1479,6 +1554,11 @@ export default {
               ) {
                 this.canvas.setViewportTransform(controlData.msg);
               }
+              break;
+            case "pin":
+              console.log("pin");
+              this.dropPin(controlData.msg);
+              break;
           }
         }
       });

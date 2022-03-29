@@ -23,10 +23,14 @@
           >
           <v-expansion-panel-content v-show="showSelected">
             <div v-show="selected">
-              <v-img
-                v-if="!selected.marker"
-                :src="selected.src ? selected.src : selected.url"
-              ></v-img>
+              <v-container flex v-if="!selected.marker" class="text-center">
+                <v-img
+                  :src="selected.src ? selected.src : selected.url"
+                  max-height="140"
+                  max-width="140"
+                  class="mx-auto"
+                ></v-img
+              ></v-container>
               <div v-else :class="selected.fill">
                 <v-icon x-large>mdi-map-marker</v-icon>
                 MARKER
@@ -208,7 +212,6 @@ import { mapGetters } from "vuex";
 import { sortBy } from "lodash";
 import TokenBrowser from "@/components/TokenBrowser";
 import BackgroundMenu from "@/components/BackgroundMenu";
-const locationPin = require("../assets/svg/locationPin.svg");
 export default {
   name: "SidePanel",
   watch: {
@@ -263,7 +266,6 @@ export default {
       objectsActive: false,
       tokenName: "",
       sortableList: null,
-      locationPin: locationPin,
       showTokenBrowser: false,
       selectionToggle: false,
       gcoSelect: {
@@ -479,7 +481,7 @@ export default {
     },
     tokenMenuClick(token, e) {
       this.selected = token;
-      console.log(e);
+      if (e.altKey) return;
       if (e.ctrlKey || e.button === 1) {
         token.tokenGroup = 0;
       } else if (!token.tokenGroup && token.tokenGroup !== 0) {

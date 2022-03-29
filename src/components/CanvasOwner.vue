@@ -1532,6 +1532,7 @@ export default {
               marker: false,
               notes: data.notes,
               visible: data.visible,
+              tokenGroup: data.tokenGroup ? data.tokenGroup : 0,
               showToolTip: false,
               toolTipX: 0,
               toolTipY: 0,
@@ -1755,6 +1756,8 @@ export default {
                 (this.isOwner && data.selectable) ||
                 (hasAccess && data.selectable),
               evented: data.evented,
+              sendToBack: data.sendToBack,
+              tokenGroup: data.tokenGroup,
             });
             const filter = this.canvas._objects[i].filters[0];
             if (filter.color != data.filters.color) {

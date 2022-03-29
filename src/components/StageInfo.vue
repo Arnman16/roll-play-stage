@@ -51,21 +51,19 @@
             <div class="caption" v-if="!selected">No Selection</div>
           </v-expansion-panel-content>
         </v-expansion-panel>
-        <v-expansion-panel
-        >
-          <v-expansion-panel-header
-            >Objects</v-expansion-panel-header
-          >
+        <v-expansion-panel>
+          <v-expansion-panel-header>Objects</v-expansion-panel-header>
           <v-expansion-panel-content>
-            <div v-for="token in tokenList" :key="token.__id">
+            <div v-for="token in sortableList" :key="token.__id">
               <v-row no-gutters
                 ><v-col cols="9"
                   ><v-card
                     class="mt-1 mx-0"
                     flat
                     tile
-                    color="#171717"
-                    @click="selected = token"
+                    :color="getColor(token.tokenGroup)"
+                    @click="tokenMenuClick(token, $event)"
+                    @click.middle="tokenMenuClick(token, $event)"
                   >
                     <v-card-text class="pa-1">
                       <v-avatar size="25" class="mr-1">
@@ -81,7 +79,16 @@
                   ><v-btn
                     x-small
                     icon
-                    :color="token.visible ? 'white' : 'grey darken-3'"
+                    :color="
+                      token.visible
+                        ? token.tokenGroup
+                          ? getColor(token.tokenGroup).replace(
+                              'darken',
+                              'lighten'
+                            )
+                          : 'white'
+                        : 'grey darken-3'
+                    "
                     class="ma-1 my-2"
                     @click="visibleSwitch(token)"
                     ><v-icon small>mdi-eye</v-icon></v-btn
@@ -91,6 +98,14 @@
                   <v-btn
                     icon
                     x-small
+                    :color="
+                      token.tokenGroup
+                        ? getColor(token.tokenGroup).replace(
+                            'darken',
+                            'lighten'
+                          )
+                        : 'white'
+                    "
                     @click="(selected = token), (editTokenDialog = true)"
                     class="ma-1 ml-3 my-2"
                     ><v-icon small>mdi-cog</v-icon></v-btn
@@ -113,8 +128,8 @@
           </v-expansion-panel-content>
         </v-expansion-panel>
       </v-expansion-panels>
+      <v-btn @click="sortTokenList">Sort Token List</v-btn>
       <v-btn @click="showTokenBrowser = true">test</v-btn>
-      <v-btn @click="setViewpoint">vpt</v-btn>
       <v-btn @click="setViewpoint">vpt</v-btn>
     </v-container>
     <v-dialog v-model="editTokenDialog" persistent max-width="600px">
@@ -125,7 +140,7 @@
         <v-card-text>
           <v-container>
             <v-text-field
-              v-model="selected.name"
+              v-model="tokenName"
               label="Name"
               v-on:keyup.enter="saveToken"
             ></v-text-field>
@@ -151,6 +166,10 @@
             ></v-checkbox>
             <v-checkbox label="Evented" v-model="selected.evented"></v-checkbox>
             <v-checkbox label="Visible" v-model="selected.visible"></v-checkbox>
+            <v-checkbox
+              label="Apply to all color group items"
+              v-model="applyToGroup"
+            ></v-checkbox>
             <v-checkbox
               label="Send To Back"
               v-model="selected.sendToBack"
@@ -186,6 +205,7 @@
 <script>
 import { db, firebase } from "../db";
 import { mapGetters } from "vuex";
+import { sortBy } from "lodash";
 import TokenBrowser from "@/components/TokenBrowser";
 import BackgroundMenu from "@/components/BackgroundMenu";
 const locationPin = require("../assets/svg/locationPin.svg");
@@ -198,6 +218,40 @@ export default {
     objectsActive(val) {
       console.log(val);
     },
+    selected(val) {
+      this.tokenName = val.name;
+    },
+    tokenList(list) {
+      if (!this.sortableList) {
+        this.sortableList = list;
+      } else {
+        list.forEach((i) => {
+          let found = false;
+          this.sortableList.forEach((j) => {
+            if (i.__id === j.__id) {
+              Object.keys(i).forEach((key) => {
+                j[key] = i[key];
+              });
+              j.visible = i.visible;
+              found = true;
+            }
+          });
+          if (!found) this.sortableList.push(i);
+        });
+        this.sortableList.forEach((j) => {
+          let found = false;
+          list.forEach((i) => {
+            if (i.__id === j.__id) {
+              found = true;
+            }
+          });
+          if (!found) {
+            let index = this.sortableList.indexOf(j);
+            this.sortableList.splice(index, 1);
+          }
+        });
+      }
+    },
   },
   components: {
     TokenBrowser,
@@ -205,7 +259,10 @@ export default {
   },
   data() {
     return {
+      applyToGroup: false,
       objectsActive: false,
+      tokenName: "",
+      sortableList: null,
       locationPin: locationPin,
       showTokenBrowser: false,
       selectionToggle: false,
@@ -301,6 +358,9 @@ export default {
     },
   },
   methods: {
+    sortTokenList() {
+      this.sortableList = sortBy(this.tokenList, ["tokenGroup"]);
+    },
     setViewpoint() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const controlRef = db.database().ref(slug.concat("/control"));
@@ -316,11 +376,20 @@ export default {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
       const tokenRef = db.database().ref(bgSlug + "/tokens");
-      const token = tokenRef.child(thisToken.__id);
-      const update = {
-        visible: !thisToken.visible,
-      };
-      token.update(update);
+
+      if (!thisToken.tokenGroup) {
+        const token = tokenRef.child(thisToken.__id);
+        token.update({ visible: !thisToken.visible });
+        console.log(1);
+      } else {
+        this.sortableList.forEach((tkn) => {
+          if (tkn.tokenGroup && tkn.tokenGroup === thisToken.tokenGroup) {
+            console.log(3);
+            const token = tokenRef.child(tkn.__id);
+            token.update({ visible: !thisToken.visible });
+          }
+        });
+      }
     },
     saveToken() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
@@ -335,20 +404,99 @@ export default {
         marker.update(this.selected);
       } else {
         const tokenRef = db.database().ref(bgSlug + "/tokens");
+        if (!this.selected.tokenGroup || !this.applyToGroup) {
+          const token = tokenRef.child(this.selected.__id);
+          const update = {
+            name: this.tokenName,
+            race: this.selected.race,
+            notes: this.selected.notes,
+            evented: this.selected.evented,
+            deletable: this.selected.deletable,
+            visible: this.selected.visible,
+            selectable: this.selected.selectable,
+            sendToBack: this.selected.sendToBack
+              ? this.selected.sendToBack
+              : false,
+          };
+          token.update(update);
+        } else {
+          this.sortableList.forEach((tkn) => {
+            if (tkn.tokenGroup && tkn.tokenGroup === this.selected.tokenGroup) {
+              console.log(3);
+              const token = tokenRef.child(tkn.__id);
+              const update = {
+                name: this.tokenName,
+                race: this.selected.race,
+                notes: this.selected.notes,
+                evented: this.selected.evented,
+                deletable: this.selected.deletable,
+                visible: this.selected.visible,
+                selectable: this.selected.selectable,
+                sendToBack: this.selected.sendToBack
+                  ? this.selected.sendToBack
+                  : false,
+              };
+              token.update(update);
+            }
+          });
+        }
         const token = tokenRef.child(this.selected.__id);
         const update = {
-          name: this.selected.name,
+          name: this.tokenName,
           race: this.selected.race,
           notes: this.selected.notes,
           evented: this.selected.evented,
           deletable: this.selected.deletable,
           visible: this.selected.visible,
           selectable: this.selected.selectable,
-          sendToBack: this.selected.sendToBack,
+          sendToBack: this.selected.sendToBack
+            ? this.selected.sendToBack
+            : false,
         };
         token.update(update);
       }
       this.editTokenDialog = false;
+      this.applyToGroup = false;
+    },
+    getColor(group) {
+      if (!group) {
+        return "#171717";
+      }
+      switch (group) {
+        case 1:
+          return "red darken-3";
+        case 2:
+          return "blue darken-3";
+        case 3:
+          return "orange darken-3";
+        case 4:
+          return "green darken-3";
+        case 5:
+          return "pink darken-3";
+        default:
+          return "#171717";
+      }
+    },
+    tokenMenuClick(token, e) {
+      this.selected = token;
+      console.log(e);
+      if (e.ctrlKey || e.button === 1) {
+        token.tokenGroup = 0;
+      } else if (!token.tokenGroup && token.tokenGroup !== 0) {
+        token.tokenGroup = 1;
+      } else {
+        token.tokenGroup++;
+        if (token.tokenGroup > 5) {
+          token.tokenGroup = 0;
+        }
+      }
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
+      const tokenRef = db.database().ref(bgSlug + "/tokens");
+      const tokenUpdate = tokenRef.child(this.selected.__id);
+      tokenUpdate.update({
+        tokenGroup: token.tokenGroup,
+      });
     },
   },
 };

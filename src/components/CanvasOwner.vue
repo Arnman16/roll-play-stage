@@ -11,7 +11,10 @@
         v-on:dblclick="resetZoom"
         class="fixed"
       >
-        <canvas ref="can"></canvas>
+        <FogEffect
+          v-if="effects ? (effects.fog !== null ? effects.fog : false) : false"
+        />
+        <canvas ref="can"> </canvas>
         <div v-cloak @drop.prevent="bgDrag = true" @dragover.prevent>
           <v-card
             elevation="15"
@@ -467,13 +470,16 @@ import { throttle, debounce } from "lodash";
 const locationPin = require("../assets/svg/locationPin.svg");
 const lightSVG = require("../assets/svg/light.svg");
 import draggable from "vuedraggable";
+import FogEffect from "./FogEffect.vue";
 
 export default {
   name: "Canvas2",
   components: {
     draggable,
+    FogEffect,
   },
   data: () => ({
+    effects: null,
     locationPin: locationPin,
     hoverZoomEnabled: false,
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
@@ -644,6 +650,8 @@ export default {
     bgDrag: false,
     controlRef: null,
     tokenRef: null,
+    markerRef: null,
+    drawingsRef: null,
     objectSelected: false,
     tokens: {},
     canvas: {},
@@ -675,6 +683,7 @@ export default {
     lightGroup: null,
     menuX: 0,
     menuY: 0,
+    timeHolder: null,
     isRulerTool: false,
     rulerMeasurement: {
       x1: 0,
@@ -827,8 +836,11 @@ export default {
       this.debounce(this.setTokenOpacity, opacity);
     },
     activeBackground(val) {
-      this.detachListeners();
+      if (this.tokenRef !== null) {
+        this.detachListeners();
+      }
       this.attachListeners();
+
       if (val.mapScale) this.mapScale = val.mapScale;
     },
     stage(val) {
@@ -1237,7 +1249,7 @@ export default {
       }
     },
     testFunction() {
-      console.log("Objects", this.canvas._objects);
+      console.log("Objects", this.canvas);
     },
     resetZoom() {
       let ratio = this.canvas.getHeight() / this.canvas.backgroundImage.height;
@@ -1450,6 +1462,11 @@ export default {
       fabric.Image.fromURL(url, (img) => {
         // img.scaleToHeight(this.canvas.getHeight());
         this.canvas.setBackgroundImage(img);
+        if (this.effects && this.effects.fog) {
+          img.set({
+            opacity: 0.3,
+          });
+        }
         this.resetZoom();
         this.canvas.renderAll.bind(this.canvas);
         this.canvas.renderAll();
@@ -1524,12 +1541,14 @@ export default {
       return parseInt(hex.slice(-2), 16) / 255;
     },
     detachListeners() {
-      if (this.tokenRef) this.tokenRef.off();
-      if (this.markerRef) this.markerRef.off();
-      if (this.drawingsRef) this.drawingsRef.off();
-      if (this.lightRef) this.lightRef.off();
-      if (this.controlRef) this.controlRef.off();
+      if (this.tokenRef !== null) this.tokenRef.off();
+      if (this.markerRef !== null) this.markerRef.off();
+      if (this.drawingsRef !== null) this.drawingsRef.off();
+      if (this.lightRef !== null) this.lightRef.off();
+      if (this.controlRef !== null) this.controlRef.off();
+      if (this.effectsRef !== null) this.effectsRef.off();
       this.canvas.clear();
+      return true;
     },
     attachListeners() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
@@ -1539,8 +1558,23 @@ export default {
       this.markerRef = db.database().ref(bgSlug + "/markers");
       this.drawingsRef = db.database().ref(bgSlug + "/drawings");
       this.lightRef = db.database().ref(bgSlug + "/light");
+      this.effectsRef = db.database().ref(bgSlug + "/efects");
+
+      this.effectsRef.on("value", (snapshot) => {
+        this.effects = snapshot.val();
+        if (this.effects && this.effects.fog) {
+          this.canvas.backgroundImage.opacity = 0.3;
+        } else {
+          this.canvas.backgroundImage.opacity = 1;
+        }
+        this.canvas.renderAll();
+      });
 
       this.controlRef.on("value", (snapshot) => {
+        if (this.timeHolder === null) {
+          this.timeHolder = Date.now();
+        } else if (Date.now() - this.timeHolder < 200) return;
+        this.timeHolder = Date.now();
         const controlData = Object.values(snapshot.val()).pop();
         let timeSinceUpdate = Date.now() - controlData.timeStamp;
         if (timeSinceUpdate < 60000) {
@@ -2507,5 +2541,15 @@ export default {
 .fixed {
   position: fixed;
   /* this fixes overflow y problem when window resizes */
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #000;
+  background: rgba(0, 0, 0, 1);
+  overflow-x: hidden;
 }
 </style>

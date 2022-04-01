@@ -131,10 +131,22 @@
             </div>
           </v-expansion-panel-content>
         </v-expansion-panel>
+        <v-expansion-panel>
+          <v-expansion-panel-header>Controls</v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <v-container>
+              <v-btn class="ma-1" @click="sortTokenList">Sort Objects</v-btn>
+              <v-btn class="ma-1" @click="showTokenBrowser = true"
+                >Token Browser</v-btn
+              >
+              <v-btn class="ma-1" @click="setViewpoint">Set Viewport</v-btn>
+              <v-btn class="ma-1" @click="setFog">{{
+                effects ? (effects.fog ? "Fog Off" : "Fog On") : "Fog On"
+              }}</v-btn>
+            </v-container>
+          </v-expansion-panel-content>
+        </v-expansion-panel>
       </v-expansion-panels>
-      <v-btn @click="sortTokenList">Sort Token List</v-btn>
-      <v-btn @click="showTokenBrowser = true">test</v-btn>
-      <v-btn @click="setViewpoint">vpt</v-btn>
     </v-container>
     <v-dialog v-model="editTokenDialog" persistent max-width="600px">
       <v-card>
@@ -255,6 +267,10 @@ export default {
         });
       }
     },
+    activeBackground(val) {
+      this.detachListeners();
+      this.attachListeners(val);
+    },
   },
   components: {
     TokenBrowser,
@@ -262,6 +278,8 @@ export default {
   },
   data() {
     return {
+      effects: null,
+      effectsRef: null,
       applyToGroup: false,
       objectsActive: false,
       tokenName: "",
@@ -360,6 +378,14 @@ export default {
     },
   },
   methods: {
+    setFog() {
+      let isFog = this.effects
+        ? this.effects.fog !== null
+          ? this.effects.fog
+          : false
+        : false;
+      this.effectsRef.set({ fog: !isFog });
+    },
     sortTokenList() {
       this.sortableList = sortBy(this.tokenList, ["tokenGroup"]);
     },
@@ -500,7 +526,22 @@ export default {
         tokenGroup: token.tokenGroup,
       });
     },
+    detachListeners() {
+      if (this.effectsRef !== null) this.effectsRef.off();
+      return true;
+    },
+    attachListeners(activeBackground) {
+      if (!activeBackground.__id) return;
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const bgSlug = slug + "/backgrounds/" + activeBackground.__id;
+      this.effectsRef = db.database().ref(bgSlug + "/efects");
+
+      this.effectsRef.on("value", (snapshot) => {
+        this.effects = snapshot.val();
+      });
+    },
   },
+  mounted() {},
 };
 </script>
 

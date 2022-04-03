@@ -892,6 +892,16 @@ export default {
       let mouse = {};
       mouse.x = (mouseX - vpt[4]) / vpt[0];
       mouse.y = (mouseY - headerHeight - vpt[5]) / vpt[0];
+      mouse.color = this.colorPickerColor;
+      this.controlRef.push({
+        timeStamp: firebase.database.ServerValue.TIMESTAMP,
+        type: "pin",
+        msg: mouse,
+      });
+    },
+    onClickPin() {
+      let mouse = this.mouse;
+      mouse.color = this.colorPickerColor;
       this.controlRef.push({
         timeStamp: firebase.database.ServerValue.TIMESTAMP,
         type: "pin",
@@ -1186,8 +1196,8 @@ export default {
           left: mouse.x,
           scaleX: scale,
           scaleY: scale,
-          fill: "#ffea70",
-          opacity: 0.7,
+          fill: mouse.color,
+          opacity: 0.6,
           top: mouse.y - 100 / this.zoom,
         });
         this.canvas.add(pin);
@@ -1311,7 +1321,7 @@ export default {
         this.showAllNamesFlag = false;
       }
       var delta = opt.e.deltaY;
-      console.log("delta: ", delta);
+      // console.log("delta: ", delta);
       var zoom = this.canvas.getZoom();
       // const oldZoom = zoom;
       zoom *= 0.999 ** delta;
@@ -1862,6 +1872,20 @@ export default {
         else this.canvas.bringToFront(this.getTokenFromId(id));
         for (const i in this.canvas._objects) {
           if (this.canvas._objects[i].__id === id) {
+            if (
+              this.canvas._objects[i].visible !== data.visible &&
+              data.visible
+            ) {
+              this.canvas._objects[i].visible = true;
+              this.canvas._objects[i].opacity = 0;
+              this.canvas._objects[i].animate(
+                "opacity",
+                data.opacity ? data.opacity : 1,
+                {
+                  onChange: this.canvas.renderAll.bind(this.canvas),
+                }
+              );
+            }
             this.canvas._objects[i].set({
               name: data.name,
               race: data.race,
@@ -2140,6 +2164,9 @@ export default {
       },
       "mouse:up": (opt) => {
         this.canvas.isDragging = false;
+        if (opt.e.button === 0 && opt.e.shiftKey) {
+          this.onClickPin();
+        }
         if (this.isTap) {
           if (opt.target) {
             this.shortSnackbar.show = true;

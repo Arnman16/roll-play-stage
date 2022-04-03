@@ -28,7 +28,12 @@ export default {
 };
 </script>
 <style lang="css">
-/* ---------- Fog ---------- */
+/* 
+---------- Fog ---------- 
+Credit goes to Daniel Stuart
+https://github.com/danielstuart14/CSS_FOG_ANIMATION
+/*/
+
 .fogwrapper {
   height: 100%;
   position: absolute;
@@ -81,15 +86,15 @@ export default {
 */
 #foglayer_01 .image01,
 #foglayer_01 .image02 {
-  background: url("https://raw.githubusercontent.com/danielstuart14/CSS_FOG_ANIMATION/master/fog1.png")
-    center center/cover no-repeat transparent;
+  background: url("../assets/effects/fog1.png") center center/cover no-repeat
+    transparent;
 }
 #foglayer_02 .image01,
 #foglayer_02 .image02,
 #foglayer_03 .image01,
 #foglayer_03 .image02 {
-  background: url("https://raw.githubusercontent.com/danielstuart14/CSS_FOG_ANIMATION/master/fog2.png")
-    center center/cover no-repeat transparent;
+  background: url("../assets/effects/fog2.png") center center/cover no-repeat
+    transparent;
 }
 
 /* ---------- Keyframe Layer 1 ---------- */

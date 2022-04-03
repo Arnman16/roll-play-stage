@@ -57,6 +57,13 @@
         </v-expansion-panel>
         <v-expansion-panel>
           <v-expansion-panel-header>Objects</v-expansion-panel-header>
+          <v-btn
+            text
+            x-small
+            class="my-0 mx-auto sort-objects"
+            @click="sortTokenList"
+            >Sort Objects</v-btn
+          >
           <v-expansion-panel-content>
             <div v-for="token in sortableList" :key="token.__id">
               <v-row no-gutters
@@ -135,7 +142,6 @@
           <v-expansion-panel-header>Controls</v-expansion-panel-header>
           <v-expansion-panel-content>
             <v-container>
-              <v-btn class="ma-1" @click="sortTokenList">Sort Objects</v-btn>
               <v-btn class="ma-1" @click="showTokenBrowser = true"
                 >Token Browser</v-btn
               >
@@ -221,7 +227,7 @@
 <script>
 import { db, firebase } from "../db";
 import { mapGetters } from "vuex";
-import { sortBy } from "lodash";
+import { orderBy } from "lodash";
 import TokenBrowser from "@/components/TokenBrowser";
 import BackgroundMenu from "@/components/BackgroundMenu";
 export default {
@@ -236,9 +242,15 @@ export default {
     selected(val) {
       this.tokenName = val.name;
     },
+    activeBackground(val) {
+      this.sortableList = null;
+      this.detachListeners();
+      this.attachListeners(val);
+    },
     tokenList(list) {
       if (!this.sortableList) {
         this.sortableList = list;
+        this.sortTokenList();
       } else {
         list.forEach((i) => {
           let found = false;
@@ -266,10 +278,6 @@ export default {
           }
         });
       }
-    },
-    activeBackground(val) {
-      this.detachListeners();
-      this.attachListeners(val);
     },
   },
   components: {
@@ -387,7 +395,11 @@ export default {
       this.effectsRef.set({ fog: !isFog });
     },
     sortTokenList() {
-      this.sortableList = sortBy(this.tokenList, ["tokenGroup"]);
+      this.sortableList = orderBy(
+        this.tokenList,
+        ["tokenGroup", "sendToBack", "name"],
+        ["desc", "desc", "asc"]
+      );
     },
     setViewpoint() {
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
@@ -556,5 +568,13 @@ html {
   padding: 0 !important;
   max-height: 50vh;
   overflow-y: auto;
+}
+.sort-objects {
+  display: none;
+}
+
+.v-expansion-panel--active > .sort-objects {
+  display: grid;
+  margin: auto;
 }
 </style>

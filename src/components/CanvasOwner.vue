@@ -1464,7 +1464,7 @@ export default {
         this.canvas.setBackgroundImage(img);
         if (this.effects && this.effects.fog) {
           img.set({
-            opacity: 0.3,
+            opacity: 0.5,
           });
         }
         this.resetZoom();
@@ -1490,6 +1490,7 @@ export default {
           evented: true,
           scaleX: 1,
           scaleY: 1,
+          opacity: 1,
           stage: this.stage.slug,
           owner: this.stage.owner,
           mapScale: 1,
@@ -1548,6 +1549,7 @@ export default {
       if (this.controlRef !== null) this.controlRef.off();
       if (this.effectsRef !== null) this.effectsRef.off();
       this.canvas.clear();
+      this.tokenList = null;
       return true;
     },
     attachListeners() {
@@ -1562,10 +1564,12 @@ export default {
 
       this.effectsRef.on("value", (snapshot) => {
         this.effects = snapshot.val();
-        if (this.effects && this.effects.fog) {
-          this.canvas.backgroundImage.opacity = 0.3;
-        } else {
-          this.canvas.backgroundImage.opacity = 1;
+        if (this.canvas.backgroundImage) {
+          if (this.effects && this.effects.fog) {
+            this.canvas.backgroundImage.opacity = 0.5;
+          } else {
+            this.canvas.backgroundImage.opacity = 1;
+          }
         }
         this.canvas.renderAll();
       });

@@ -3,8 +3,10 @@ import router from "../../router";
 import { randomPageName, slugify } from "../../assets/words";
 
 const state = () => ({
+  chatPin: null,
   fetchingUser: false,
   headerHeight: 0,
+  isStageOwner: false,
   selected: {},
   welcomeDialog: false,
   editTokenDialog: false,
@@ -34,6 +36,12 @@ const state = () => ({
 const getters = {
   selected: (state) => {
     return state.selected;
+  },
+  chatPin: (state) => {
+    return state.chatPin;
+  },
+  isStageOwner: (state) => {
+    return state.isStageOwner;
   },
   viewport: (state) => {
     return state.viewport;
@@ -84,6 +92,14 @@ const actions = {
   setSelected: ({ commit, state }, newSelection) => {
     commit("SET_SELECTED", newSelection);
     return state.selected;
+  },
+  setChatPin: ({ commit, state }, value) => {
+    commit("SET_CHAT_PIN", value);
+    return state.chatPin;
+  },
+  setIsStageOwner: ({ commit, state }, value) => {
+    commit("SET_IS_STAGE_OWNER", value);
+    return state.isStageOwner;
   },
   setViewport: ({ commit, state }, newViewport) => {
     commit("SET_VIEWPORT", newViewport);
@@ -282,6 +298,7 @@ const actions = {
           let user = state.user;
           if (user) {
             user.viewing = stage.slug;
+            dispatch("setIsStageOwner", user.uid === stage.owner);
             dispatch("setUser", user);
           }
         }
@@ -296,6 +313,12 @@ const actions = {
 const mutations = {
   SET_SELECTED: (state, newSelection) => {
     state.selected = newSelection;
+  },
+  SET_CHAT_PIN: (state, value) => {
+    state.chatPin = value;
+  },
+  SET_IS_STAGE_OWNER: (state, value) => {
+    state.isStageOwner = value;
   },
   SET_HEADER_HEIGHT: (state, newHeight) => {
     state.headerHeight = newHeight;

@@ -804,6 +804,9 @@ export default {
     slug() {
       return this.$route.params.slug;
     },
+    chatPin() {
+      return this.$store.getters.chatPin;
+    },
     user() {
       return this.$store.getters.user;
     },
@@ -813,6 +816,9 @@ export default {
     },
   },
   watch: {
+    chatPin(val) {
+      this.dropPin(val);
+    },
     drawMode(val) {
       this.canvas.isDrawingMode = val;
     },
@@ -898,6 +904,26 @@ export default {
         type: "pin",
         msg: mouse,
       });
+      if (!auth.currentUser) return;
+      let message = {
+        message: mouse,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        uid: this.user.uid,
+        name: this.user.displayName.split(" ")[0],
+        // diceRoll: false,
+        location: true,
+      };
+
+      const path = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const chatPath = `${path}/chat`;
+
+      db.database()
+        .ref(chatPath)
+        .push(message, (error) => {
+          if (error) {
+            console.log("chat tx error", error);
+          }
+        });
     },
     onClickPin() {
       let mouse = this.mouse;
@@ -907,6 +933,26 @@ export default {
         type: "pin",
         msg: mouse,
       });
+      if (!auth.currentUser) return;
+      let message = {
+        message: mouse,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        uid: this.user.uid,
+        name: this.user.displayName.split(" ")[0],
+        // diceRoll: false,
+        location: true,
+      };
+
+      const path = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      const chatPath = `${path}/chat`;
+
+      db.database()
+        .ref(chatPath)
+        .push(message, (error) => {
+          if (error) {
+            console.log("chat tx error", error);
+          }
+        });
     },
     delay300() {
       return new Promise((resolve) => {

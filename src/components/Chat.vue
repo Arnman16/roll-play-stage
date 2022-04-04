@@ -9,8 +9,30 @@
         End of chat
       </div>
       <v-row v-for="(msg, index) in messages" :key="index">
+        <v-col v-if="msg.diceRoll">
+          <v-card flat tile outlined color="black">
+            <v-card-title>Dice Roll - {{ msg.name }}</v-card-title>
+            <v-card-text class="mx-auto pa-1 text-block">
+              {{ msg.message }}
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col v-else-if="msg.location">
+          <v-card
+            @click="setChatPin(msg.message)"
+            flat
+            tile
+            :color="msg.message.color"
+          >
+            <v-card-text
+              :class="`text-center pa-0 ${getTextColor(msg.message.color)}`"
+            >
+              {{ `${msg.name} dropped a pin` }}
+            </v-card-text>
+          </v-card>
+        </v-col>
         <v-col
-          v-if="!msg.diceRoll"
+          v-else
           cols="12"
           :class="
             msg.uid == user.uid
@@ -26,7 +48,7 @@
           {{ msg.name }}:
         </v-col>
         <v-col
-          v-if="!msg.diceRoll"
+          v-if="!msg.diceRoll && !msg.location"
           :class="
             msg.uid == user.uid
               ? 'pl-2 pr-0 pt-0 pb-1 ma-0 ba-0'
@@ -36,36 +58,29 @@
           <v-card
             flat
             :color="msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'"
-          >
-            <v-card-text class="mx-auto py-1 text-block px-2">
-              {{ msg.message }}
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col v-else>
-          <v-card flat tile outlined color="black">
-            <v-card-title>Dice Roll - {{ msg.name }}</v-card-title>
-            <v-card-text class="mx-auto pa-1 text-block">
-              {{ msg.message }}
-            </v-card-text>
+            ><v-container class="chat-bubble">
+              <v-card-text class="mx-auto py-1 text-block px-2">
+                {{ msg.message }}
+              </v-card-text>
+            </v-container>
           </v-card>
         </v-col>
       </v-row>
       <div id="chatEnd"></div>
     </v-container>
-      <v-textarea
-        solo
-        v-model="textArea"
-        flat
-        outlined
-        fill-width
-        hide-details
-        rows="3"
-        background-color="rgba(29, 29, 32, 0.7)"
-        color="rgba(255, 255, 255, 0.2)"
-        class="px-2 pt-2 pb-0 text-area"
-        v-on:keyup.enter="sendMessage"
-      ></v-textarea>
+    <v-textarea
+      solo
+      v-model="textArea"
+      flat
+      outlined
+      fill-width
+      hide-details
+      rows="3"
+      background-color="rgba(29, 29, 32, 0.7)"
+      color="rgba(255, 255, 255, 0.2)"
+      class="px-2 pt-2 pb-0 text-area"
+      v-on:keyup.enter="sendMessage"
+    ></v-textarea>
   </v-container>
 </template>
 
@@ -76,6 +91,14 @@ import { debounce } from "lodash";
 export default {
   name: "Chat",
   computed: {
+    chatPin: {
+      get() {
+        return this.$store.getters.chatPin;
+      },
+      set(value) {
+        return this.$store.dispatch("setChatPin", value);
+      },
+    },
     ...mapGetters({
       user: "user",
       stage: "stage",
@@ -101,6 +124,28 @@ export default {
     };
   },
   methods: {
+    getTextColor(bgColor) {
+      let lightColor = "white--text";
+      let darkColor = "black--text";
+      var color = bgColor.charAt(0) === "#" ? bgColor.substring(1, 7) : bgColor;
+      var r = parseInt(color.substring(0, 2), 16); // hexToR
+      var g = parseInt(color.substring(2, 4), 16); // hexToG
+      var b = parseInt(color.substring(4, 6), 16); // hexToB
+      var uicolors = [r / 255, g / 255, b / 255];
+      var c = uicolors.map((col) => {
+        if (col <= 0.03928) {
+          return col / 12.92;
+        }
+        return Math.pow((col + 0.055) / 1.055, 2.4);
+      });
+      var L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      return L > 0.179 ? darkColor : lightColor;
+    },
+    setChatPin(mouse) {
+      this.chatPin = null;
+      console.log(mouse);
+      this.chatPin = mouse;
+    },
     scrollToBottom() {
       this.$vuetify.goTo("#chatEnd", this.options);
     },
@@ -178,7 +223,8 @@ export default {
 }
 
 .text-block {
-  white-space: pre-line;
+  /* white-space: pre-line; */
+  justify-self: center;
 }
 
 .text-area {
@@ -188,6 +234,10 @@ export default {
   width: 100%;
   height: 15%;
   color: antiquewhite;
+}
+.chat-bubble {
+  display: flex;
+  align-items: center;
 }
 /* width */
 ::-webkit-scrollbar {

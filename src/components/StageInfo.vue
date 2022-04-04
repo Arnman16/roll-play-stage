@@ -5,7 +5,7 @@
       disabled
       tile
       elevation="10"
-      v-if="stage"
+      v-if="stage && false"
       color="blue-grey darken-4"
       class="ma-1"
     >
@@ -16,19 +16,21 @@
       </v-card-title>
     </v-card>
     <v-container fill-height class="px-1 pb-1 pt-0 align-start">
-      <v-expansion-panels focusable accordion flat multiple>
+      <v-expansion-panels focusable accordion flat multiple small>
         <v-expansion-panel>
           <v-expansion-panel-header @click="selectionToggle = !selectionToggle"
             >Selection</v-expansion-panel-header
           >
           <v-expansion-panel-content v-show="showSelected">
             <div v-show="selected">
-              <v-container flex v-if="!selected.marker" class="text-center">
+              <v-container
+                v-if="!selected.marker"
+                class="text-center token-img"
+              >
                 <v-img
                   :src="selected.src ? selected.src : selected.url"
-                  max-height="140"
                   max-width="140"
-                  class="mx-auto"
+                  class="mx-auto justify-center"
                 ></v-img
               ></v-container>
               <div v-else :class="selected.fill">
@@ -36,23 +38,18 @@
                 MARKER
               </div>
               <div>
-                <span class="overline">Name: </span>
+                <span class="overline mx-3 yellow--text">Name: </span>
                 <span class="caption">{{ selected.name }}</span>
               </div>
-              <div v-if="!(selected.marker || selected.type === 'path')">
-                <span class="overline">Race: </span>
-                <span class="caption">{{ selected.race }}</span>
-              </div>
               <div>
-                <v-divider></v-divider>
-                <span class="overline">Notes: </span>
+                <span v-show="selected.notes" class="overline mx-3 yellow--text"
+                  >Notes:
+                </span>
                 <span class="caption">{{ selected.notes }}</span>
               </div>
-              <v-btn @click="editTokenDialog = true" icon dark color="yellow">
-                <v-icon>mdi-playlist-edit</v-icon>
-              </v-btn>
             </div>
             <div class="caption" v-if="!selected">No Selection</div>
+            <v-divider></v-divider>
           </v-expansion-panel-content>
         </v-expansion-panel>
         <v-expansion-panel>
@@ -66,8 +63,8 @@
           >
           <v-expansion-panel-content>
             <div v-for="token in sortableList" :key="token.__id">
-              <v-row no-gutters
-                ><v-col cols="9"
+              <v-row no-gutters v-if="isOwner || token.visible"
+                ><v-col :cols="isOwner ? 9 : 12"
                   ><v-card
                     class="mt-1 mx-0"
                     flat
@@ -86,7 +83,7 @@
                     </v-card-text>
                   </v-card></v-col
                 >
-                <v-col cols="1"
+                <v-col v-if="isOwner" cols="1"
                   ><v-btn
                     x-small
                     icon
@@ -105,7 +102,7 @@
                     ><v-icon small>mdi-eye</v-icon></v-btn
                   ></v-col
                 >
-                <v-col cols="1">
+                <v-col v-if="isOwner" cols="1">
                   <v-btn
                     icon
                     x-small
@@ -126,7 +123,7 @@
             </div>
           </v-expansion-panel-content>
         </v-expansion-panel>
-        <v-expansion-panel>
+        <v-expansion-panel v-if="isOwner">
           <v-expansion-panel-header>Backgrounds</v-expansion-panel-header>
           <v-expansion-panel-content>
             <div class="mt-2"></div>
@@ -138,7 +135,7 @@
             </div>
           </v-expansion-panel-content>
         </v-expansion-panel>
-        <v-expansion-panel>
+        <v-expansion-panel v-if="isOwner">
           <v-expansion-panel-header>Controls</v-expansion-panel-header>
           <v-expansion-panel-content>
             <v-container>
@@ -337,6 +334,7 @@ export default {
     },
     ...mapGetters({
       stage: "stage",
+      isOwner: "isStageOwner",
     }),
     slug() {
       return this.$route.params.slug;
@@ -519,24 +517,27 @@ export default {
     },
     tokenMenuClick(token, e) {
       this.selected = token;
-      if (e.altKey) return;
-      if (e.ctrlKey || e.button === 1) {
-        token.tokenGroup = 0;
-      } else if (!token.tokenGroup && token.tokenGroup !== 0) {
-        token.tokenGroup = 1;
-      } else {
-        token.tokenGroup++;
-        if (token.tokenGroup > 5) {
+      if (this.isOwner) {
+        if (e.altKey) return;
+        if (e.ctrlKey || e.button === 1) {
           token.tokenGroup = 0;
+        } else if (!token.tokenGroup && token.tokenGroup !== 0) {
+          token.tokenGroup = 1;
+        } else {
+          token.tokenGroup++;
+          if (token.tokenGroup > 5) {
+            token.tokenGroup = 0;
+          }
         }
+
+        const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+        const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
+        const tokenRef = db.database().ref(bgSlug + "/tokens");
+        const tokenUpdate = tokenRef.child(this.selected.__id);
+        tokenUpdate.update({
+          tokenGroup: token.tokenGroup,
+        });
       }
-      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
-      const bgSlug = slug + "/backgrounds/" + this.activeBackground.__id;
-      const tokenRef = db.database().ref(bgSlug + "/tokens");
-      const tokenUpdate = tokenRef.child(this.selected.__id);
-      tokenUpdate.update({
-        tokenGroup: token.tokenGroup,
-      });
     },
     detachListeners() {
       if (this.effectsRef !== null) this.effectsRef.off();
@@ -566,7 +567,7 @@ html {
 }
 .v-expansion-panel-content {
   padding: 0 !important;
-  max-height: 50vh;
+  max-height: 40vh;
   overflow-y: auto;
 }
 .sort-objects {
@@ -576,5 +577,10 @@ html {
 .v-expansion-panel--active > .sort-objects {
   display: grid;
   margin: auto;
+}
+.token-img {
+  display: flex;
+  height: 164px;
+  align-items: center;
 }
 </style>

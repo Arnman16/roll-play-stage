@@ -4,7 +4,7 @@
     fill-height
     style="display: block"
   >
-    <v-container fluid class="align-start chat-area" id="chat-area">
+    <v-container class="align-start chat-area" id="chat-area">
       <div style="height: 100px; opacity: 0.15" class="text-center">
         End of chat
       </div>
@@ -17,7 +17,7 @@
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col v-else-if="msg.location">
+        <v-col v-else-if="msg.location" class="py-1 px-0">
           <v-card
             @click="setChatPin(msg.message)"
             flat
@@ -25,8 +25,18 @@
             :color="msg.message.color"
           >
             <v-card-text
-              :class="`text-center pa-0 ${getTextColor(msg.message.color)}`"
+              :class="
+                `text-center text-body-2 font-italic pa-0 ${getTextColor(
+                  msg.message.color
+                )}--text`
+              "
             >
+              <v-icon
+                small
+                :color="getTextColor(msg.message.color)"
+                class="mx-1"
+                >mdi-map-marker</v-icon
+              >
               {{ `${msg.name} dropped a pin` }}
             </v-card-text>
           </v-card>
@@ -59,14 +69,14 @@
             flat
             :color="msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'"
             ><v-container class="chat-bubble">
-              <v-card-text class="mx-auto py-1 text-block px-2">
-                {{ msg.message }}
+              <v-card-text class="mx-auto text-block pa-0"
+                >{{ msg.message }}
               </v-card-text>
             </v-container>
           </v-card>
         </v-col>
       </v-row>
-      <div id="chatEnd"></div>
+      <span id="chatEnd"></span>
     </v-container>
     <v-textarea
       solo
@@ -125,8 +135,8 @@ export default {
   },
   methods: {
     getTextColor(bgColor) {
-      let lightColor = "white--text";
-      let darkColor = "black--text";
+      let lightColor = "white";
+      let darkColor = "black";
       var color = bgColor.charAt(0) === "#" ? bgColor.substring(1, 7) : bgColor;
       var r = parseInt(color.substring(0, 2), 16); // hexToR
       var g = parseInt(color.substring(2, 4), 16); // hexToG
@@ -160,6 +170,7 @@ export default {
       }
       if (!auth.currentUser) return;
       let text = this.textArea.replace(/^\n|\n$/g, "");
+      console.log(text);
       this.textArea = "";
       let message = {
         message: text,
@@ -223,8 +234,9 @@ export default {
 }
 
 .text-block {
-  /* white-space: pre-line; */
-  justify-self: center;
+  white-space: pre-line;
+  justify-items: center;
+  text-justify: center;
 }
 
 .text-area {
@@ -234,10 +246,13 @@ export default {
   width: 100%;
   height: 15%;
   color: antiquewhite;
+  padding: 0;
 }
 .chat-bubble {
   display: flex;
-  align-items: center;
+  text-justify: center;
+  margin: 0px;
+  padding: 5px !important;
 }
 /* width */
 ::-webkit-scrollbar {

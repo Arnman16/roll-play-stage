@@ -811,8 +811,7 @@ export default {
       return this.$store.getters.user;
     },
     isOwner() {
-      if (!this.user) return null;
-      return this.user.uid === this.stage.owner;
+      return this.$store.getters.isStageOwner;
     },
   },
   watch: {
@@ -1141,6 +1140,7 @@ export default {
       });
     },
     getMenu(opt) {
+      if (!this.isOwner) return;
       this.clickData = opt;
       if (opt.target) {
         this.colorPickerFlag = true;

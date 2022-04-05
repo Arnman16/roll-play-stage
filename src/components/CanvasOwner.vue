@@ -722,6 +722,7 @@ export default {
     isTokenAdded: false,
     tokenAdded: {},
     colorPickerFlag: false,
+    tapTimes: [0, 0, 0],
   }),
   computed: {
     activeFab() {
@@ -1008,8 +1009,21 @@ export default {
     movingHandler(opt) {
       this.throttleLess(this.touchZoomPan, opt);
     },
-    tapHandler() {
+    tapHandler(opt) {
       this.isTap = true;
+      this.tapTimes.shift();
+      this.tapTimes.push(opt.timeStamp);
+      if (this.tapTimes[2] - this.tapTimes[0] < 350) {
+        let mouse = {
+          originalEvent: {
+            x: opt.changedTouches[0].clientX,
+            y: opt.changedTouches[0].clientY,
+          },
+        };
+
+        this.onPinDrop(mouse);
+        console.log(opt);
+      }
     },
     touchZoomPan(opt) {
       if (this.objectSelected) return;
@@ -1042,10 +1056,10 @@ export default {
       this.canvas.lastPosY = e.clientY;
       this.viewport = vpt;
     },
-    endHandler() {
+    endHandler(opt) {
       this.isTouchZoom = false;
       this.touch = false;
-      console.log("touch over");
+      console.log("touch over", opt);
       // console.log("touch end");
     },
     giveAccess(uid) {

@@ -1,96 +1,112 @@
 <template>
   <v-container
-    class="align-start pa-0 ma-0 ba-0"
-    fill-height
-    style="display: block"
+    class="align-start pa-0 ma-0 ba-0 flex"
+    :style="`height: ${fullHeight}px`"
   >
-    <v-container class="align-start chat-area" id="chat-area">
-      <div style="height: 100px; opacity: 0.15" class="text-center">
+    <v-container
+      fluid
+      class="chat-area"
+      :style="`height: ${chatHeight}px`"
+      id="chat-area"
+    >
+      <div style="height: 50px; opacity: 0.15" class="text-center">
         End of chat
       </div>
+
       <v-row v-for="(msg, index) in messages" :key="index">
-        <v-col v-if="msg.diceRoll">
-          <v-card flat tile outlined color="black">
-            <v-card-title>Dice Roll - {{ msg.name }}</v-card-title>
-            <v-card-text class="mx-auto pa-1 text-block">
-              {{ msg.message }}
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col v-else-if="msg.location" class="py-1 px-0">
-          <v-card
-            @click="setChatPin(msg.message)"
-            flat
-            tile
-            :color="msg.message.color"
-          >
-            <v-card-text
-              :class="
-                `text-center text-body-2 font-italic pa-0 ${getTextColor(
-                  msg.message.color
-                )}--text`
-              "
-            >
-              <v-icon
-                small
-                :color="getTextColor(msg.message.color)"
-                class="mx-1"
-                >mdi-map-marker</v-icon
+        <v-tooltip left open-delay="350" color="#22222299">
+          <template v-slot:activator="{ on, attrs }">
+            <v-container v-bind="attrs" v-on="on" class="ma-0 pa-0">
+              <v-col v-if="msg.diceRoll">
+                <v-card flat tile outlined color="black">
+                  <v-card-title>Dice Roll - {{ msg.name }}</v-card-title>
+                  <v-card-text class="mx-auto pa-1 text-block">
+                    {{ msg.message }}
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col v-else-if="msg.location" class="py-1 px-0">
+                <v-card
+                  @click="setChatPin(msg.message)"
+                  flat
+                  tile
+                  :color="msg.message.color"
+                >
+                  <v-card-text
+                    :class="
+                      `text-center text-body-2 font-italic pa-0 ${getTextColor(
+                        msg.message.color
+                      )}--text`
+                    "
+                  >
+                    <v-icon
+                      small
+                      :color="getTextColor(msg.message.color)"
+                      class="mx-1"
+                      >mdi-map-marker</v-icon
+                    >
+                    {{ `${msg.name} dropped a pin` }}
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col
+                v-else
+                cols="12"
+                :class="
+                  msg.uid == user.uid
+                    ? 'text-right text-caption py-0 px-2 font-weight-thin my-auto'
+                    : 'text-left text-caption py-0 px-2 font-weight-thin my-auto'
+                "
+                :style="
+                  msg.uid == stage.owner
+                    ? 'opacity: 0.5; color: yellow;'
+                    : 'opacity: 0.5'
+                "
               >
-              {{ `${msg.name} dropped a pin` }}
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col
-          v-else
-          cols="12"
-          :class="
-            msg.uid == user.uid
-              ? 'text-right text-caption py-0 px-2 font-weight-thin my-auto'
-              : 'text-left text-caption py-0 px-2 font-weight-thin my-auto'
-          "
-          :style="
-            msg.uid == stage.owner
-              ? 'opacity: 0.5; color: yellow;'
-              : 'opacity: 0.5'
-          "
-        >
-          {{ msg.name }}:
-        </v-col>
-        <v-col
-          v-if="!msg.diceRoll && !msg.location"
-          :class="
-            msg.uid == user.uid
-              ? 'pl-2 pr-0 pt-0 pb-1 ma-0 ba-0'
-              : 'pl-0 pr-2 pt-0 pb-1 ma-0 ba-0'
-          "
-        >
-          <v-card
-            flat
-            :color="msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'"
-            ><v-container class="chat-bubble">
-              <v-card-text class="mx-auto text-block pa-0"
-                >{{ msg.message }}
-              </v-card-text>
+                {{ msg.name }}:
+              </v-col>
+              <v-col
+                v-if="!msg.diceRoll && !msg.location"
+                :class="
+                  msg.uid == user.uid
+                    ? 'pl-2 pr-0 pt-0 pb-1 ma-0 ba-0'
+                    : 'pl-0 pr-2 pt-0 pb-1 ma-0 ba-0'
+                "
+              >
+                <v-card
+                  flat
+                  :color="
+                    msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'
+                  "
+                  ><v-container class="chat-bubble">
+                    <v-card-text class="mx-auto text-block pa-0"
+                      >{{ msg.message }}
+                    </v-card-text>
+                  </v-container>
+                </v-card>
+              </v-col>
             </v-container>
-          </v-card>
-        </v-col>
+          </template>
+          <span>{{ getTimeString(msg.timestamp) }}</span>
+        </v-tooltip>
       </v-row>
       <span id="chatEnd"></span>
     </v-container>
-    <v-textarea
-      solo
-      v-model="textArea"
-      flat
-      outlined
-      fill-width
-      hide-details
-      rows="3"
-      background-color="rgba(29, 29, 32, 0.7)"
-      color="rgba(255, 255, 255, 0.2)"
-      class="px-2 pt-2 pb-0 text-area"
-      v-on:keyup.enter="sendMessage"
-    ></v-textarea>
+    <v-card width="100%" class="ma-0 pa-0 mt-auto">
+      <v-textarea
+        solo
+        v-model="textArea"
+        flat
+        outlined
+        fill-width
+        hide-details
+        rows="3"
+        background-color="rgba(29, 29, 32, 0.7)"
+        color="rgba(255, 255, 255, 0.2)"
+        class="pa-1 text-area"
+        v-on:keyup.enter="sendMessage"
+      ></v-textarea>
+    </v-card>
   </v-container>
 </template>
 
@@ -98,6 +114,7 @@
 import { db, firebase, auth } from "../db";
 import { mapGetters } from "vuex";
 import { debounce } from "lodash";
+const { DateTime } = require("luxon");
 export default {
   name: "Chat",
   computed: {
@@ -112,12 +129,14 @@ export default {
     ...mapGetters({
       user: "user",
       stage: "stage",
+      headerHeight: "headerHeight",
     }),
   },
   watch: {
     stage(stageVal) {
       if (stageVal) {
         this.setChatWatchers();
+        this.getHeights();
       }
     },
   },
@@ -125,6 +144,8 @@ export default {
     return {
       messages: [],
       scrollToNewMsg: true,
+      chatHeight: 0,
+      fullHeight: 0,
       chatRef: null,
       textArea: "",
       options: {
@@ -184,6 +205,10 @@ export default {
         }
       });
     },
+    getTimeString(epoch) {
+      var dt = DateTime.fromSeconds(epoch / 1000);
+      return dt.toLocaleString(DateTime.DATETIME_MED);
+    },
     setChatRef() {
       const path = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const chatPath = `${path}/chat`;
@@ -203,10 +228,20 @@ export default {
         });
       }
     },
+    getHeights() {
+      this.fullHeight = this.$vuetify.breakpoint.mdAndDown
+        ? window.innerHeight - 35
+        : window.innerHeight - this.headerHeight - 35;
+      this.chatHeight = this.fullHeight - 104;
+    },
   },
   mounted() {
     this.setChatWatchers();
     this.$vuetify.goTo("#chatEnd", this.options);
+    this.getHeights();
+    window.addEventListener("resize", () => {
+      this.getHeights();
+    });
   },
   updated() {},
 };
@@ -221,8 +256,8 @@ export default {
   flex-direction: column;
 }
 .chat-area {
-  display: block;
-  height: 80%;
+  /* display: block; */
+  /* height: 80%; */
   width: 100%;
   overflow-y: scroll !important;
   overscroll-behavior-y: contain;
@@ -240,11 +275,11 @@ export default {
 }
 
 .text-area {
-  position: fixed !important;
+  /* position: fixed !important;
   bottom: 0px;
-  right: 0px;
+  right: 0px; */
   width: 100%;
-  height: 15%;
+  /* height: 15%; */
   color: antiquewhite;
   padding: 0;
 }

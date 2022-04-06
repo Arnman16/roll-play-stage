@@ -1,16 +1,32 @@
 <template>
-  <div>
-    <div v-if="stage !== null">
-      <CanvasOwner />
-      <!-- <CanvasOwner v-if="isOwner" />
+  <div style="height: 100%">
+    <div v-if="sessionActive || isOwner">
+      <div v-if="stage !== null">
+        <CanvasOwner />
+        <!-- <CanvasOwner v-if="isOwner" />
       <CanvasViewer v-else /> -->
+      </div>
+      <v-container fluid fill-height v-else-if="!stage && !loading">
+        <v-row justify="space-around">
+          <v-col align="center">
+            <v-card class="mx-auto">
+              <v-card-text>
+                <h1 class="mx-auto">stage not found.</h1>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
     </div>
-    <v-container fluid fill-height v-else-if="!stage && !loading">
+    <v-container fluid fill-height v-else-if="!loading">
       <v-row justify="space-around">
         <v-col align="center">
           <v-card class="mx-auto">
-            <v-card-text>
-              <h1 class="mx-auto">stage not found.</h1>
+            <v-card-title class="text-md-h2 text-sm-h3">
+              <span class="mx-auto">STAGE OFFLINE</span>
+            </v-card-title>
+            <v-card-text class="mx-auto font-italic blue--text"
+              >{{ excuses[i] }}
             </v-card-text>
           </v-card>
         </v-col>
@@ -38,6 +54,7 @@ export default {
     },
     stage(stageVal) {
       if (stageVal) {
+        this.checkSessionStatus();
         this.setUserWatchers();
         this.setUserStatus();
         this.$title = stageVal.pageName;
@@ -48,6 +65,9 @@ export default {
         console.log("IS SAVED", isSaved);
         this.userStatusDatabaseRef.update({ saved: isSaved });
       }
+    },
+    sessionActive(value) {
+      this.$store.dispatch("setIsSessionActive", value);
     },
   },
   computed: {
@@ -84,9 +104,19 @@ export default {
   },
   data() {
     return {
+      i: 0,
+      excuses: [
+        "Sorry! I'm looking for the perfect goblin token",
+        "I'm probably not deleting your character",
+        "Wait... I thought our session was next week",
+        "Don't worry I'm probably not adding more traps",
+        "I prefer to play by myself",
+      ],
       stageUsersRef: null,
       infoConnectedRef: null,
       userStatusDatabaseRef: null,
+      sessionActiveRef: null,
+      sessionActive: null,
     };
   },
   methods: {
@@ -94,6 +124,14 @@ export default {
       this.detatchWatchers();
       this.setOffline();
       this.$store.dispatch("fetchStage", this.$route.params.slug);
+    },
+    checkSessionStatus() {
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      this.sessionActiveRef = db.database().ref(slug + "/session/active");
+      this.sessionActiveRef.on("value", (snapshot) => {
+        const value = snapshot.val();
+        this.sessionActive = value;
+      });
     },
     setUserStatus() {
       if (auth.currentUser) {
@@ -222,7 +260,7 @@ export default {
     },
   },
   mounted() {
-    // this.$store.dispatch("fetchStage", this.$route.params.slug);
+    this.i = Math.floor(Math.random() * 5);
   },
   beforeDestroy() {
     this.setOffline();

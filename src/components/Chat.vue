@@ -27,6 +27,7 @@
               </v-col>
               <v-col v-else-if="msg.location" class="py-1 px-0">
                 <v-card
+                  :disabled="!sessionActive || !isOwner"
                   @click="setChatPin(msg.message)"
                   flat
                   tile
@@ -53,7 +54,7 @@
                 v-else
                 cols="12"
                 :class="
-                  msg.uid == user.uid
+                  user && msg.uid == user.uid
                     ? 'text-right text-caption py-0 px-2 font-weight-thin my-auto'
                     : 'text-left text-caption py-0 px-2 font-weight-thin my-auto'
                 "
@@ -68,7 +69,7 @@
               <v-col
                 v-if="!msg.diceRoll && !msg.location"
                 :class="
-                  msg.uid == user.uid
+                  user && msg.uid == user.uid
                     ? 'pl-2 pr-0 pt-0 pb-1 ma-0 ba-0'
                     : 'pl-0 pr-2 pt-0 pb-1 ma-0 ba-0'
                 "
@@ -76,7 +77,9 @@
                 <v-card
                   flat
                   :color="
-                    msg.uid == user.uid ? '#121212' : 'rgba(42,47,49,0.7)'
+                    user && msg.uid == user.uid
+                      ? '#121212'
+                      : 'rgba(42,47,49,0.7)'
                   "
                   ><v-container class="chat-bubble">
                     <v-card-text class="mx-auto text-block pa-0"
@@ -93,7 +96,8 @@
       <span id="chatEnd"></span>
     </v-container>
     <v-card width="100%" class="ma-0 pa-0 mt-auto">
-      <v-textarea
+      <v-text-field
+        :disabled="!isAuthenticated"
         solo
         v-model="textArea"
         flat
@@ -101,11 +105,11 @@
         fill-width
         hide-details
         rows="3"
+        @keypress.enter="sendMessage"
         background-color="rgba(29, 29, 32, 0.7)"
         color="rgba(255, 255, 255, 0.2)"
         class="pa-1 text-area"
-        v-on:keyup.enter="sendMessage"
-      ></v-textarea>
+      ></v-text-field>
     </v-card>
   </v-container>
 </template>
@@ -130,6 +134,9 @@ export default {
       user: "user",
       stage: "stage",
       headerHeight: "headerHeight",
+      isAuthenticated: "isAuthenticated",
+      isOwner: "isStageOwner",
+      sessionActive: "isSessionActive",
     }),
   },
   watch: {
@@ -142,6 +149,7 @@ export default {
   },
   data() {
     return {
+      signInToChat: false,
       messages: [],
       scrollToNewMsg: true,
       chatHeight: 0,
@@ -184,13 +192,15 @@ export default {
       func();
     }, 25),
     sendMessage(e) {
-      if (this.textArea.replace("\n", "") < 2) return;
+      console.log(e);
+      let text = e.target._value;
+      if (text.replace("\n", "") < 2) return;
       if (e.ctrlKey) {
         this.textArea = this.textArea + "\n";
         return;
       }
       if (!auth.currentUser) return;
-      let text = this.textArea.replace(/^\n|\n$/g, "");
+      text = text.replace(/^\n|\n$/g, "");
       console.log(text);
       this.textArea = "";
       let message = {
@@ -217,7 +227,7 @@ export default {
     },
     setChatWatchers() {
       this.setChatRef();
-      if (auth.currentUser) {
+      if (auth.currentUser || !this.signInToChat) {
         this.chatRef.on("child_added", (snapshot) => {
           let val = snapshot.val();
           val.key = snapshot.key;
@@ -236,8 +246,7 @@ export default {
     },
   },
   mounted() {
-    this.setChatWatchers();
-    this.$vuetify.goTo("#chatEnd", this.options);
+    // this.$vuetify.goTo("#chatEnd", this.options);
     this.getHeights();
     window.addEventListener("resize", () => {
       this.getHeights();

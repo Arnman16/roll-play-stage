@@ -146,6 +146,13 @@
               <v-btn class="ma-1" @click="setFog">{{
                 effects ? (effects.fog ? "Fog Off" : "Fog On") : "Fog On"
               }}</v-btn>
+              <v-btn class="ma-1" @click="setActive">{{
+                sessionActive !== null
+                  ? sessionActive
+                    ? "Session Active"
+                    : "Session Inactive"
+                  : "Session Active"
+              }}</v-btn>
             </v-container>
           </v-expansion-panel-content>
         </v-expansion-panel>
@@ -289,8 +296,11 @@ export default {
       objectsActive: false,
       tokenName: "",
       sortableList: null,
+      sessionActive: false,
       showTokenBrowser: false,
       selectionToggle: false,
+      session: {},
+      sessionRef: null,
       gcoSelect: {
         value: "source-over",
         description:
@@ -391,6 +401,10 @@ export default {
           : false
         : false;
       this.effectsRef.set({ fog: !isFog });
+    },
+    setActive() {
+      let active = this.sessionActive ? true : false;
+      this.sessionRef.child("active").set(!active);
     },
     sortTokenList() {
       this.sortableList = orderBy(
@@ -544,10 +558,19 @@ export default {
       return true;
     },
     attachListeners(activeBackground) {
+      if (this.sessionRef) this.sessionRef.off();
+      if (this.bgRef) this.bgRef.off();
       if (!activeBackground.__id) return;
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       const bgSlug = slug + "/backgrounds/" + activeBackground.__id;
+
+      this.sessionRef = db.database().ref(slug + "/session");
       this.effectsRef = db.database().ref(bgSlug + "/efects");
+
+      this.sessionRef.child("active").on("value", (snapshot) => {
+        this.sessionActive = snapshot.val();
+        console.log("SESSION THING", this.session);
+      });
 
       this.effectsRef.on("value", (snapshot) => {
         this.effects = snapshot.val();

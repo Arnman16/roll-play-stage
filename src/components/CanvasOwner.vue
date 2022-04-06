@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-container fluid class="pa-0">
+    <v-container fluid class="pa-0" v-show="sessionActive || isOwner">
       <div
         v-touchy:start="startHandler"
         v-touchy:end="endHandler"
@@ -479,6 +479,7 @@ export default {
     FogEffect,
   },
   data: () => ({
+    sessionActive: null,
     effects: null,
     locationPin: locationPin,
     hoverZoomEnabled: false,
@@ -2049,6 +2050,10 @@ export default {
       if (this.bgRef) this.bgRef.off();
       const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
       this.sessionRef = db.database().ref(slug + "/session");
+      this.activeBackgroundRef = db
+        .database()
+        .ref(slug + "/session/activeBackground");
+      this.sessionActiveRef = db.database().ref(slug + "/session/active");
       this.bgRef = db.database().ref(slug + "/backgrounds");
       this.bgRef.on("value", (snapshot) => {
         const data = snapshot.val();
@@ -2071,27 +2076,27 @@ export default {
       //     if (snapshot.val().mapScale) this.mapScale == snapshot.val().mapScale;
       //   }
       // });
-      this.sessionRef
-        .child(1)
-        .get()
-        .then((result) => {
-          if (!result.val()) {
-            return;
-          }
-          this.activeBackground = result.val().activeBackground;
-          this.setBG(this.activeBackground.url);
-          // this.attachListeners();
-        });
-      this.sessionRef.on("child_changed", (snapshot) => {
-        console.log("sessionRef child_changed");
-        this.setBG(snapshot.val().activeBackground.url);
-        this.activeBackground = snapshot.val().activeBackground;
+      // this.sessionRef
+      //   .child(1)
+      //   .get()
+      //   .then((result) => {
+      //     if (!result.val()) {
+      //       return;
+      //     }
+      //     this.activeBackground = result.val().activeBackground;
+      //     this.setBG(this.activeBackground.url);
+      //     // this.attachListeners();
+      //   });
+      this.activeBackgroundRef.on("value", (snapshot) => {
+        console.log("BG CH");
+        const background = snapshot.val();
+        this.setBG(background.url);
+        this.activeBackground = background;
       });
-      // this.sessionRef.on("child_added", (snapshot) => {
-      //   console.log("sessionRef child_added");
-      //   this.setBG(snapshot.val().activeBackground.url);
-      //   this.activeBackground = snapshot.val().activeBackground;
-      // });
+      this.sessionActiveRef.on("value", (snapshot) => {
+        const value = snapshot.val();
+        this.sessionActive = value;
+      });
     },
   },
   mounted() {
@@ -2248,7 +2253,7 @@ export default {
             this.isRulerTool = false;
             this.canvas.defaultCursor = "default";
             const bgObject = this.bgRef.child(this.activeBackground.__id);
-            const sessionObj = this.sessionRef.child("1/activeBackground");
+            const sessionObj = this.sessionRef.child("activeBackground");
             bgObject
               .update({
                 mapScale: mapScale,

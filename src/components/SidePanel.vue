@@ -13,7 +13,9 @@
     <v-toolbar height="35">
       <v-tabs v-model="tabModel" grow>
         <v-tabs-slider color="green"></v-tabs-slider>
-        <v-tab style="text-transform: none"><v-icon>mdi-details</v-icon></v-tab>
+        <v-tab v-if="sessionActive || isOwner" style="text-transform: none"
+          ><v-icon>mdi-details</v-icon></v-tab
+        >
         <v-tab style="text-transform: none"
           ><v-badge color="orange" overlap dot :value="true">
             <v-icon>mdi-message</v-icon></v-badge
@@ -32,7 +34,7 @@
         v-model="tabModel"
         style="display: block; height: 100%;"
       >
-        <v-tab-item style="height: 100%">
+        <v-tab-item style="height: 100%" v-if="sessionActive || isOwner">
           <StageInfo />
         </v-tab-item>
         <v-tab-item style="display: block; height: 100%;">
@@ -71,6 +73,12 @@ export default {
 
     showSelected() {
       return this.selected && this.selectionToggle;
+    },
+    sessionActive() {
+      return this.$store.getters.isSessionActive;
+    },
+    isOwner() {
+      return this.$store.getters.isStageOwner;
     },
   },
   methods: {},

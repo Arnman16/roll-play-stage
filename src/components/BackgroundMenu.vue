@@ -147,7 +147,7 @@ export default {
       this.bgMenu = true;
       const slug = `users/${auth.currentUser.uid}/stages/${bg.stage}/session`;
       this.sessionRef = db.database().ref(slug);
-      this.sessionRef.child(1).update({
+      this.sessionRef.update({
         activeBackground: bg,
       });
       this.activeBackground = bg;

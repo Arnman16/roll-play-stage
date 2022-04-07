@@ -165,23 +165,14 @@
         </v-card-title>
         <v-card-text>
           <v-container>
-            <v-text-field
-              v-model="tokenName"
-              label="Name"
-              v-on:keyup.enter="saveToken"
-            ></v-text-field>
+            <v-text-field v-model="tokenName" label="Name"></v-text-field>
 
             <v-text-field
               v-if="!(selected.marker || selected.type === 'path')"
               label="Race"
               v-model="selected.race"
-              v-on:keyup.enter="saveToken"
             ></v-text-field>
-            <v-textarea
-              label="Notes"
-              v-model="selected.notes"
-              v-on:keyup.enter="saveToken"
-            ></v-textarea>
+            <v-textarea label="Notes" v-model="selected.notes"></v-textarea>
             <v-checkbox
               label="Deletable"
               v-model="selected.deletable"
@@ -403,6 +394,7 @@ export default {
       this.effectsRef.set({ fog: !isFog });
     },
     setActive() {
+      if (!this.sessionRef) this.attachListeners(this.activeBackground);
       let active = this.sessionActive ? true : false;
       this.sessionRef.child("active").set(!active);
     },

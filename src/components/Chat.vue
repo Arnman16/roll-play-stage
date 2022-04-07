@@ -96,20 +96,21 @@
       <span id="chatEnd"></span>
     </v-container>
     <v-card width="100%" class="ma-0 pa-0 mt-auto">
-      <v-text-field
+      <v-textarea
         :disabled="!isAuthenticated"
         solo
-        v-model="textArea"
+        :value="chatText"
+        id="chat-text"
         flat
+        ref="pos"
         outlined
         fill-width
         hide-details
-        rows="3"
-        @keypress.enter="sendMessage"
-        background-color="rgba(29, 29, 32, 0.7)"
-        color="rgba(255, 255, 255, 0.2)"
-        class="pa-1 text-area"
-      ></v-text-field>
+        rows="2"
+        @keydown.enter.exact="sendMessage"
+        @keyup.enter.exact="clearMessage"
+        class="pa-1 text-area text-block"
+      ></v-textarea>
     </v-card>
   </v-container>
 </template>
@@ -155,7 +156,7 @@ export default {
       chatHeight: 0,
       fullHeight: 0,
       chatRef: null,
-      textArea: "",
+      chatText: "",
       options: {
         duration: 50,
         container: "#chat-area",
@@ -191,18 +192,16 @@ export default {
     debounce: debounce((func) => {
       func();
     }, 25),
-    sendMessage(e) {
-      console.log(e);
-      let text = e.target._value;
+    clearMessage() {
+      document.getElementById("chat-text").value = "";
+      this.chatText = "";
+      this.$refs.pos.reset();
+    },
+    sendMessage() {
+      let text = document.getElementById("chat-text").value;
       if (text.replace("\n", "") < 2) return;
-      if (e.ctrlKey) {
-        this.textArea = this.textArea + "\n";
-        return;
-      }
       if (!auth.currentUser) return;
       text = text.replace(/^\n|\n$/g, "");
-      console.log(text);
-      this.textArea = "";
       let message = {
         message: text,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
@@ -246,7 +245,7 @@ export default {
     },
   },
   mounted() {
-    // this.$vuetify.goTo("#chatEnd", this.options);
+    this.$vuetify.goTo("#chatEnd", this.options);
     this.getHeights();
     window.addEventListener("resize", () => {
       this.getHeights();

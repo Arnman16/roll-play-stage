@@ -345,6 +345,28 @@
         </v-sheet>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="handoutDialog.show" fullscreen>
+      <v-card style="opacity: 1">
+        <v-row>
+          <v-spacer></v-spacer>
+          <v-btn class="mr-3 mt-3" icon @click="handoutDialog.show = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-row>
+        <v-img
+          contain
+          :max-height="fullHeight - 100"
+          :src="handoutDialog.src"
+          :lazy-src="logo"
+        ></v-img>
+        <v-card-actions class="justify-end">
+          <v-card-text class="text-center text-h5">
+            {{ handoutDialog.name }}
+          </v-card-text>
+          <v-btn text @click="handoutDialog.show = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-menu
       v-model="showObjectMenu"
       :position-x="menuX"
@@ -469,6 +491,7 @@ import { fabric } from "fabric";
 import { throttle, debounce } from "lodash";
 const locationPin = require("../assets/svg/locationPin.svg");
 const lightSVG = require("../assets/svg/light.svg");
+const logo = require("../assets/logo.svg");
 import draggable from "vuedraggable";
 import FogEffect from "./FogEffect.vue";
 
@@ -481,6 +504,8 @@ export default {
   data: () => ({
     sessionActive: null,
     effects: null,
+    fullHeight: 400,
+    logo: logo,
     locationPin: locationPin,
     hoverZoomEnabled: false,
     colors: ["blue", "red", "yellow", "orange", "green", "purple"],
@@ -719,6 +744,11 @@ export default {
       { title: "Show All Names", action: "showallnames" },
       { title: "Calibrate Ruler", action: "calibratebg" },
     ],
+    handoutDialog: {
+      show: false,
+      src: "",
+      name: "",
+    },
     clickData: {},
     isTokenAdded: false,
     tokenAdded: {},
@@ -1573,6 +1603,11 @@ export default {
       img.src = url;
       this.bgDrag = false;
     },
+    setHandout(handout) {
+      this.handoutDialog.show = true;
+      this.handoutDialog.src = handout.url;
+      this.handoutDialog.name = handout.name;
+    },
     rollDice(roll) {
       var dice = roll.split("D");
       var rolls = dice[0];
@@ -1667,6 +1702,10 @@ export default {
             case "pin":
               console.log("pin");
               this.dropPin(controlData.msg);
+              break;
+            case "handout":
+              console.log("handout");
+              this.setHandout(controlData.msg);
               break;
           }
         }
@@ -2110,8 +2149,8 @@ export default {
 
     this.reloadSession();
     const fullWidth = window.innerWidth;
-    const fullHeight = window.innerHeight - this.headerHeight - 5;
-    this.canvas.setDimensions({ width: fullWidth, height: fullHeight });
+    this.fullHeight = window.innerHeight - this.headerHeight - 5;
+    this.canvas.setDimensions({ width: fullWidth, height: this.fullHeight });
     window.addEventListener("resize", () => {
       const fullWidth = window.innerWidth;
       const fullHeight = window.innerHeight;

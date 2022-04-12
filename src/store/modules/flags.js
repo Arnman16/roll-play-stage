@@ -4,7 +4,7 @@ const state = () => ({
   drawer: false,
   showLogin: false,
   bgMenu: false,
-  isSessionActive: null,
+  isSessionActive: true,
 });
 
 // getters

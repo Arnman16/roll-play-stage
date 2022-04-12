@@ -1,6 +1,6 @@
 <template>
   <div style="height: 100%">
-    <div v-if="sessionActive || isOwner">
+    <div v-if="(sessionActive || isOwner) && !loading">
       <div v-if="stage !== null">
         <CanvasOwner />
         <!-- <CanvasOwner v-if="isOwner" />
@@ -18,7 +18,7 @@
         </v-row>
       </v-container>
     </div>
-    <v-container fluid fill-height v-else-if="!loading">
+    <v-container fluid fill-height v-else-if="!sessionActive && !loading">
       <v-row justify="space-around">
         <v-col align="center">
           <v-card class="mx-auto">
@@ -116,7 +116,7 @@ export default {
       infoConnectedRef: null,
       userStatusDatabaseRef: null,
       sessionActiveRef: null,
-      sessionActive: null,
+      sessionActive: true,
     };
   },
   methods: {

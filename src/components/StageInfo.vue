@@ -128,11 +128,18 @@
           <v-expansion-panel-content>
             <div class="mt-2"></div>
             <div v-for="background in backgrounds" :key="background.__id">
-              <BackgroundMenu
+              <BackgroundList
                 :background="background"
                 :isActive="background.__id == activeBackground.__id"
               />
             </div>
+          </v-expansion-panel-content>
+        </v-expansion-panel>
+        <v-expansion-panel>
+          <v-expansion-panel-header>Handouts</v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <div class="mt-2"></div>
+            <HandoutList />
           </v-expansion-panel-content>
         </v-expansion-panel>
         <v-expansion-panel v-if="isOwner">
@@ -224,7 +231,8 @@ import { db, firebase } from "../db";
 import { mapGetters } from "vuex";
 import { orderBy } from "lodash";
 import TokenBrowser from "@/components/TokenBrowser";
-import BackgroundMenu from "@/components/BackgroundMenu";
+import BackgroundList from "@/components/BackgroundList";
+import HandoutList from "@/components/HandoutList";
 export default {
   name: "SidePanel",
   watch: {
@@ -277,7 +285,8 @@ export default {
   },
   components: {
     TokenBrowser,
-    BackgroundMenu,
+    BackgroundList,
+    HandoutList,
   },
   data() {
     return {

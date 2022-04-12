@@ -106,9 +106,8 @@
         outlined
         fill-width
         hide-details
-        rows="2"
-        @keydown.enter.exact="sendMessage"
-        @keyup.enter.exact="clearMessage"
+        rows="3"
+        @keypress.enter.exact.prevent="sendMessage"
         class="pa-1 text-area text-block"
       ></v-textarea>
     </v-card>
@@ -208,11 +207,15 @@ export default {
         uid: this.user.uid,
         name: this.user.displayName.split(" ")[0],
       };
-      this.chatRef.push(message, (error) => {
-        if (error) {
-          console.log("chat tx error", error);
-        }
-      });
+      this.chatRef
+        .push(message, (error) => {
+          if (error) {
+            console.log("chat tx error", error);
+          }
+        })
+        .then(() => {
+          this.clearMessage();
+        });
     },
     getTimeString(epoch) {
       var dt = DateTime.fromSeconds(epoch / 1000);
@@ -246,10 +249,14 @@ export default {
   },
   mounted() {
     this.$vuetify.goTo("#chatEnd", this.options);
+    document.getElementById("chat-text").enterKeyHint = "send";
     this.getHeights();
     window.addEventListener("resize", () => {
       this.getHeights();
     });
+    if (this.stage) {
+      this.setChatWatchers();
+    }
   },
   updated() {},
 };

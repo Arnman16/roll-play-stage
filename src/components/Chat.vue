@@ -27,7 +27,7 @@
               </v-col>
               <v-col v-else-if="msg.location" class="py-1 px-0">
                 <v-card
-                  :disabled="!sessionActive || !isOwner"
+                  :disabled="!sessionActive"
                   @click="setChatPin(msg.message)"
                   flat
                   tile

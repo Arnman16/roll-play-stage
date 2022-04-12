@@ -223,7 +223,7 @@
     <v-footer
       style="z-index: 1"
       height="34"
-      color="rgba(0,0,0,0.8)"
+      :color="sessionActive ? 'rgba(0,0,0,0.8)' : 'rgba(40,0,0,0.8)'"
       fixed
       padless
       outlined

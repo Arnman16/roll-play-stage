@@ -1,12 +1,44 @@
 <template>
   <v-container
     class="align-start pa-0 ma-0 ba-0 flex"
-    :style="`height: ${fullHeight}px`"
+    :style="`height: ${fullHeight}px;`"
   >
+    <div
+      class="mx-auto text-center hover-menu"
+      :style="`position: absolute; z-index: 2; width: 100%;`"
+    >
+      <v-btn
+        class="btn-fix"
+        fab
+        x-small
+        icon
+        :color="diceToggle ? 'white' : '#ffffff66'"
+        @click="diceToggle = !diceToggle"
+        ><v-icon>mdi-dice-5</v-icon></v-btn
+      >
+      <v-btn
+        class="btn-fix"
+        fab
+        x-small
+        icon
+        :color="pinToggle ? 'white' : '#ffffff66'"
+        @click="pinToggle = !pinToggle"
+        ><v-icon>mdi-map-marker</v-icon></v-btn
+      >
+      <v-btn
+        class="btn-fix"
+        fab
+        x-small
+        icon
+        :color="chatToggle ? 'white' : '#ffffff66'"
+        @click="chatToggle = !chatToggle"
+        ><v-icon>mdi-chat</v-icon></v-btn
+      >
+    </div>
     <v-container
       fluid
       class="chat-area"
-      :style="`height: ${chatHeight}px`"
+      :style="`height: ${chatHeight}px;`"
       id="chat-area"
     >
       <div style="height: 50px; opacity: 0.15" class="text-center">
@@ -25,8 +57,12 @@
                   </v-card-text>
                 </v-card>
               </v-col>
-              <v-col v-else-if="msg.location" class="py-1 px-0">
+              <v-col
+                v-else-if="msg.location"
+                :class="`py-1 px-0 ${!pinToggle ? 'hide-element' : ''}`"
+              >
                 <v-card
+                  v-if="pinToggle"
                   :disabled="!sessionActive"
                   @click="setChatPin(msg.message)"
                   flat
@@ -53,10 +89,12 @@
               <v-col
                 v-else
                 cols="12"
+                class="text-caption py-0 px-2 font-weight-thin my-auto"
                 :class="
-                  user && msg.uid == user.uid
-                    ? 'text-right text-caption py-0 px-2 font-weight-thin my-auto'
-                    : 'text-left text-caption py-0 px-2 font-weight-thin my-auto'
+                  `
+                  ${user && msg.uid == user.uid ? 'text-right' : 'text-left'}
+                  ${!chatToggle ? 'hide-element' : ''}
+                `
                 "
                 :style="
                   msg.uid == stage.owner
@@ -68,10 +106,11 @@
               </v-col>
               <v-col
                 v-if="!msg.diceRoll && !msg.location"
+                class="pa-0 pb-1 ma-0 ba-0"
                 :class="
-                  user && msg.uid == user.uid
-                    ? 'pl-2 pr-0 pt-0 pb-1 ma-0 ba-0'
-                    : 'pl-0 pr-2 pt-0 pb-1 ma-0 ba-0'
+                  `
+                  ${user && msg.uid == user.uid ? 'pl-2' : 'pr-2'}
+                  ${!chatToggle ? 'hide-element' : ''}`
                 "
               >
                 <v-card
@@ -152,6 +191,9 @@ export default {
       signInToChat: false,
       messages: [],
       scrollToNewMsg: true,
+      chatToggle: true,
+      pinToggle: true,
+      diceToggle: true,
       chatHeight: 0,
       fullHeight: 0,
       chatRef: null,
@@ -322,5 +364,20 @@ export default {
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(110, 98, 98);
+}
+.hover-menu {
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: 0.3s;
+}
+.hover-menu:hover {
+  transform: translateY(0px);
+  opacity: 1;
+}
+.btn-fix:focus::before {
+  opacity: 0 !important;
+}
+.hide-element {
+  display: none;
 }
 </style>

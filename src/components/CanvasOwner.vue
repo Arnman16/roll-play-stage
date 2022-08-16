@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-container fluid class="pa-0" v-show="sessionActive || isOwner">
+    <v-container fluid class="pa-0" v-show="sessionActive || isOwner || true">
       <div
         v-touchy:start="startHandler"
         v-touchy:end="endHandler"
@@ -20,6 +20,7 @@
             elevation="15"
             class="minimap"
             style="position: absolute; top: 10px; left: 10px"
+            v-if="isOwner"
           >
             <v-img
               :src="activeBackground.url"

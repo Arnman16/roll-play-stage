@@ -1,6 +1,6 @@
 <template>
   <div style="height: 100%">
-    <div v-if="(sessionActive || isOwner) && !loading">
+    <div v-if="(sessionActive || isOwner || isAllowed) && !loading">
       <div v-if="stage !== null">
         <CanvasOwner />
         <!-- <CanvasOwner v-if="isOwner" />
@@ -55,6 +55,7 @@ export default {
     stage(stageVal) {
       if (stageVal) {
         this.checkSessionStatus();
+        this.setAllowedUsers();
         this.setUserWatchers();
         this.setUserStatus();
         this.$title = stageVal.pageName;
@@ -84,6 +85,12 @@ export default {
       set(val) {
         this.$store.dispatch("setActiveUsers", val);
       },
+    },
+    isAllowed() {
+      if (!this.stage) return false;
+      if (!this.isAuthenticated) return false;
+      if (!this.allowedUsers) return false;
+      return this.allowedUsers.includes(this.user["uid"]);
     },
     stageSaved: {
       get() {
@@ -116,7 +123,9 @@ export default {
       infoConnectedRef: null,
       userStatusDatabaseRef: null,
       sessionActiveRef: null,
+      allowedUsersRef: null,
       sessionActive: true,
+      allowedUsers: null,
     };
   },
   methods: {
@@ -131,6 +140,14 @@ export default {
       this.sessionActiveRef.on("value", (snapshot) => {
         const value = snapshot.val();
         this.sessionActive = value;
+      });
+    },
+    setAllowedUsers() {
+      const slug = `users/${this.stage.owner}/stages/${this.stage.slug}`;
+      this.allowedUsersRef = db.database().ref(slug + "/session/allowedUsers");
+      this.allowedUsersRef.on("value", (snapshot) => {
+        const value = snapshot.val();
+        this.allowedUsers = value;
       });
     },
     setUserStatus() {

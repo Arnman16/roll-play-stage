@@ -160,6 +160,15 @@
                     : "Session Inactive"
                   : "Session Active"
               }}</v-btn>
+              <v-select
+                v-if="activeUsers.length && !sessionActive"
+                v-model="allowedUsers"
+                :items="Array.from(activeUsers, (x) => x['displayName'])"
+                attach
+                chips
+                label="Allowed Users"
+                multiple
+              ></v-select>
             </v-container>
           </v-expansion-panel-content>
         </v-expansion-panel>
@@ -282,6 +291,13 @@ export default {
         });
       }
     },
+    allowedUsers(users) {
+      if (!users || users.length == 0) {
+        this.setAllowedUsers([]);
+      } else {
+        this.setAllowedUsers(users);
+      }
+    },
   },
   components: {
     TokenBrowser,
@@ -300,6 +316,7 @@ export default {
       showTokenBrowser: false,
       selectionToggle: false,
       session: {},
+      allowedUsers: [],
       sessionRef: null,
       gcoSelect: {
         value: "source-over",
@@ -345,6 +362,7 @@ export default {
     ...mapGetters({
       stage: "stage",
       isOwner: "isStageOwner",
+      activeUsers: "activeUsers",
     }),
     slug() {
       return this.$route.params.slug;
@@ -401,6 +419,19 @@ export default {
           : false
         : false;
       this.effectsRef.set({ fog: !isFog });
+    },
+    setAllowedUsers(users) {
+      if (!this.sessionRef) this.attachListeners(this.activeBackground);
+      let uidArray = [];
+      users.forEach((user) => {
+        const index = this.activeUsers
+          .map((object) => object.displayName)
+          .indexOf(user);
+        uidArray.push(this.activeUsers[index].uid);
+      });
+
+      this.sessionRef.child("allowedUsers").set(uidArray);
+      console.log(users);
     },
     setActive() {
       if (!this.sessionRef) this.attachListeners(this.activeBackground);
@@ -526,6 +557,14 @@ export default {
           return "green darken-3";
         case 5:
           return "pink darken-3";
+        case 6:
+          return "black";
+        case 7:
+          return "yellow darken-3";
+        case 8:
+          return "teal darken-3";
+        case 9:
+          return "brown darken-3";
         default:
           return "#171717";
       }
@@ -540,7 +579,7 @@ export default {
           token.tokenGroup = 1;
         } else {
           token.tokenGroup++;
-          if (token.tokenGroup > 5) {
+          if (token.tokenGroup > 9) {
             token.tokenGroup = 0;
           }
         }

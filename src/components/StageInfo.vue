@@ -63,7 +63,9 @@
           >
           <v-expansion-panel-content>
             <div v-for="token in sortableList" :key="token.__id">
-              <v-row no-gutters v-if="isOwner || token.visible"
+              <v-row
+                no-gutters
+                v-if="isOwner || (token.visible && !token.sendToBack)"
                 ><v-col :cols="isOwner ? 9 : 12"
                   ><v-card
                     class="mt-1 mx-0"
@@ -209,7 +211,7 @@
             ></v-checkbox>
             <v-select
               v-model="gcoSelect"
-              v-if="selected.type === 'path'"
+              v-if="selected.type === 'path' || 1"
               :hint="gcoSelect.description"
               :items="gcoItems"
               item-text="value"
@@ -219,6 +221,7 @@
               return-object
               single-line
             ></v-select>
+            <div class="pt-10"> {{ selected.src ? selected.src : selected.url }}</div>
           </v-container>
           <!-- <small>*indicates required field</small> -->
         </v-card-text>
@@ -498,6 +501,7 @@ export default {
             deletable: this.selected.deletable,
             visible: this.selected.visible,
             selectable: this.selected.selectable,
+            globalCompositeOperation: this.selected.globalCompositeOperation,
             sendToBack: this.selected.sendToBack
               ? this.selected.sendToBack
               : false,

@@ -1536,6 +1536,7 @@ export default {
           scaleX: 1,
           scaleY: 1,
           visible: true,
+          opacity: 1,
           hasAccess: "",
           originX: "center",
           originY: "center",
@@ -1569,6 +1570,7 @@ export default {
             opacity: 0.5,
           });
         }
+        console.log("BG OPTIONS");
         this.resetZoom();
         this.canvas.renderAll.bind(this.canvas);
         this.canvas.renderAll();
@@ -1589,6 +1591,7 @@ export default {
           width: width,
           deletable: true,
           selectable: true,
+          globalCompositeOperation: "source-over",
           evented: true,
           scaleX: 1,
           scaleY: 1,
@@ -1720,6 +1723,7 @@ export default {
           tokenObj.__id = key;
           tokens.push(tokenObj);
         });
+        console.log("Tokens Loaded");
         this.tokens = tokens;
         this.tokenList = tokens;
       });
@@ -1749,18 +1753,21 @@ export default {
               scaleX: data.scaleX,
               scaleY: data.scaleY,
               deletable: data.deletable,
-              opacity: data.opacity ? data.opacity : 1,
+              globalCompositeOperation: data.globalCompositeOperation
+                ? data.globalCompositeOperation
+                : "source-over",
+              opacity: !data.visible ? 0.2 : data.opacity ? data.opacity : 1,
               selectable: (this.isOwner && data.selectable) || hasAccess,
               // hasAccess: hasAccess,
               evented: data.evented,
               angle: data.angle,
-              shadow: shadow,
+              shadow: data.evented ? shadow : null,
               name: data.name,
               race: data.race,
               sendToBack: data.sendToBack,
               marker: false,
               notes: data.notes,
-              visible: data.visible,
+              visible: this.isOwner ? true : data.visible,
               tokenGroup: data.tokenGroup ? data.tokenGroup : 0,
               showToolTip: false,
               toolTipX: 0,
@@ -1991,10 +1998,13 @@ export default {
               name: data.name,
               race: data.race,
               notes: data.notes,
-              visible: data.visible,
-              opacity: data.opacity ? data.opacity : 1,
+              visible: this.isOwner ? true : data.visible,
+              opacity: !data.visible ? 0.2 : data.opacity ? data.opacity : 1,
               hasAccess: data.hasAccess,
               deletable: data.deletable,
+              globalCompositeOperation: data.globalCompositeOperation
+                ? data.globalCompositeOperation
+                : "source-over",
               selectable:
                 (this.isOwner && data.selectable) ||
                 (hasAccess && data.selectable),
@@ -2128,8 +2138,9 @@ export default {
       //     // this.attachListeners();
       //   });
       this.activeBackgroundRef.on("value", (snapshot) => {
-        console.log("BG CH");
+        console.log("Setting BG");
         const background = snapshot.val();
+        console.log(background.__id);
         this.setBG(background.url);
         this.activeBackground = background;
       });
@@ -2614,6 +2625,9 @@ export default {
                 evented: object.evented,
                 angle: object.angle,
                 path: object.path,
+                globalCompositeOperation: object.globalCompositeOperation
+                  ? object.globalCompositeOperation
+                  : "source-over",
                 originX: object.originX,
                 originY: object.originY,
                 stroke: object.stroke,
